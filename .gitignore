@@ -1,0 +1,28 @@
+# Repo-wide rules. Anything specific to one project — its `data/` layout, its
+# build outputs — belongs in that project's own .gitignore instead, where the
+# paths stay relative to the project directory.
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# One `.env` at the repo root serves every project: the key loader walks up from
+# the project directory to the nearest `.env`, so there is no need for a copy
+# per project.
+.env
+.env.local
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp

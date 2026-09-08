@@ -1,0 +1,21 @@
+# conda env create -f environment.yml && conda activate dance
+#
+# ffmpeg is pinned into the env rather than assumed on the system: the convert
+# step is what guarantees the pixels the model sees and the pixels OpenCV reads
+# share an orientation and a frame count, so it should not depend on whatever
+# ffmpeg happens to be on PATH.
+name: dance
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - ffmpeg
+  - py-opencv
+  - numpy
+  - matplotlib-base
+  - pillow
+  - rich
+  - python-dotenv
+  - pip
+  - pip:
+      - openai>=1.40
