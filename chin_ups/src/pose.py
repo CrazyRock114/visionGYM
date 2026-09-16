@@ -8,7 +8,13 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-CONTENT_OBJECT_FRAMES = "vitpose_plus.pose.frames"
+from .skeleton import KPT_NAMES
+
+CONTENT_OBJECT_KPTS = "vid.pose.kpts"
+
+# Bumped when the request or the response shape this module reads changes, so a
+# cache written against the old one is a miss rather than a confusing crash.
+CONTRACT = "flat-envelope-v1"
 
 
 @dataclass
@@ -51,27 +57,56 @@ def build_request(video: Path, *, every_frame: bool, fps: float, n_frames: int,
 
 
 def unwrap(payload: dict) -> tuple[list[dict], dict[int, list[dict]]]:
-    """Pull the frame list out of the response envelope.
+    """Regroup the flat record list into the per-frame shape this demo works in.
 
-    Checked rather than assumed: a wrong `content.object` means an image was
-    sent where a video was intended, which is clearer to say here than to let
-    it surface as a KeyError during rendering.
+    The gateway returns one flat list of person records, each tagged with the
+    `frame_id` it came from, beside a `frames` list naming every frame it
+    sampled. Everything downstream of here thinks in frames, so the records are
+    grouped back into `{"index": ..., "persons": [...]}` once, here, rather than
+    at every call site.
+
+    `frames` is the authority on which frames exist, not the records: nobody is
+    detected in some of them, those carry no records at all, and rebuilding the
+    clip from the records alone would silently close the gap instead of showing
+    it.
+
+    `by_index` starts out holding each frame's own `persons` list, but that is
+    only true until something filters them: every cleaning pass here rebinds
+    `frame["persons"]` rather than editing the list in place, so a caller that
+    cleans must rebuild `by_index` afterwards, as `main.py` does.
+
+    The joint order is checked rather than assumed. `kpts_labels` names the
+    joints the model actually returned, and every index in `skeleton.py` — which
+    wrist, which ankle — is a position in that list. A model that returned a
+    different layout would still draw, silently, as a tangle of limbs.
     """
-    try:
-        entry = payload["data"][0]
-        content = entry["content"]
-    except (KeyError, IndexError) as exc:
-        raise RuntimeError(f"Unexpected response envelope: {json.dumps(payload)[:400]}") from exc
+    content = payload.get("content")
+    if not isinstance(content, dict):
+        raise RuntimeError(f"Unexpected response envelope: {json.dumps(payload)[:400]}")
 
     got = content.get("object")
-    if got != CONTENT_OBJECT_FRAMES:
+    if got != CONTENT_OBJECT_KPTS:
         raise RuntimeError(
-            f"Expected a video payload ({CONTENT_OBJECT_FRAMES}), got {got!r}. "
+            f"Expected a video pose payload ({CONTENT_OBJECT_KPTS}), got {got!r}. "
             "Did the request send an image_url instead of a video_url?"
         )
 
-    frames = content["items"]
-    return frames, {f["index"]: f["persons"] for f in frames}
+    labels = content.get("kpts_labels")
+    if labels is not None and list(labels) != KPT_NAMES:
+        raise RuntimeError(
+            f"The model returned {len(labels)} joints in an order this demo does "
+            f"not know: {list(labels)}. src/skeleton.py is written against COCO-17."
+        )
+
+    by_index: dict[int, list[dict]] = {
+        int(f["frame_id"]): [] for f in content.get("frames") or []}
+    for person in content.get("items") or []:
+        index = person.get("frame_id")
+        if index is not None:
+            by_index.setdefault(int(index), []).append(person)
+
+    frames = [{"index": i, "persons": by_index[i]} for i in sorted(by_index)]
+    return frames, by_index
 
 
 def request_poses(client, *, model: str, video_b64: str, extra_body: dict) -> dict:
@@ -107,6 +142,7 @@ def cache_path(video: Path, cache_dir: Path, *, model: str, extra_body: dict) ->
             "mtime_ns": stat.st_mtime_ns,
             "model": model,
             "extra_body": extra_body,
+            "contract": CONTRACT,
         },
         sort_keys=True,
     )
