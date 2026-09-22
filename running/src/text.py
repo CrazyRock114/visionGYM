@@ -23,6 +23,21 @@ import numpy as np
 # "Avenir Next.ttc" face 0 is Bold while face 1 is Bold *Italic* — picking by
 # eye is how a panel ends up silently slanted.
 FONT_CANDIDATES: tuple[tuple[str, int, str], ...] = (
+    # macOS 中文字体
+    ("/System/Library/Fonts/PingFang.ttc", 0, "PingFang SC"),
+    ("/System/Library/Fonts/STHeiti Medium.ttc", 0, "STHeiti Medium"),
+    ("/System/Library/Fonts/STHeiti Light.ttc", 0, "STHeiti Light"),
+    ("/Library/Fonts/Arial Unicode.ttf", 0, "Arial Unicode"),
+    ("/System/Library/Fonts/Supplemental/Songti.ttc", 0, "Songti SC"),
+    # Linux 中文字体
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 0, "Noto Sans CJK SC"),
+    ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 0, "Noto Sans CJK SC"),
+    ("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 0, "WenQuanYi Micro Hei"),
+    ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0, "WenQuanYi Zen Hei"),
+    # Windows 中文字体
+    ("C:/Windows/Fonts/msyh.ttc", 0, "Microsoft YaHei"),
+    ("C:/Windows/Fonts/simhei.ttf", 0, "SimHei"),
+    # 英文高质量备选
     ("/System/Library/Fonts/Avenir Next.ttc", 0, "Avenir Next Bold"),
     ("/System/Library/Fonts/HelveticaNeue.ttc", 1, "Helvetica Neue Bold"),
     ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0, "Arial Bold"),

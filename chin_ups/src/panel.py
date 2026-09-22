@@ -48,39 +48,36 @@ def _plot_font(font):
 
 
 def _verdict(reps, metric: str) -> list[tuple[str, tuple[int, int, int]]]:
-    """The closing read: fastest, slowest, and the gap between them.
-
-    Each line is colored like the dot it names, so the note and the graph read
-    as one thing without a legend. The percentage compares *durations*: the
-    slowest rep took N% longer than the fastest. That is why the wording says
-    "slower" rather than "decrease", since speed goes as 1/time.
-    """
+    """The closing read: fastest, slowest, and the gap between them."""
     values = [rep_value(r, metric) for r in reps]
     fast_i, slow_i = extremes(values)
     fastest, slowest = values[fast_i], values[slow_i]
 
     lines = [
-        (f"Fastest: rep {fast_i + 1} ({fastest:.2f}s)", _rgb(FAST)),
-        (f"Slowest: rep {slow_i + 1} ({slowest:.2f}s)", _rgb(SLOW)),
+        (f"最快: 第 {fast_i + 1} 次 ({fastest:.2f}秒)", _rgb(FAST)),
+        (f"最慢: 第 {slow_i + 1} 次 ({slowest:.2f}秒)", _rgb(SLOW)),
     ]
     if len(reps) == 1 or slowest - fastest < 1e-9:
-        return [lines[0], ("even pace across the set", _rgb(MUTED))]
+        return [lines[0], ("整组节奏均匀稳定", _rgb(MUTED))]
 
     pct = (slowest - fastest) / fastest * 100
-    lines.append((f"{pct:.0f}% slower from rep {fast_i + 1} to rep {slow_i + 1}",
+    lines.append((f"从第 {fast_i + 1} 次到第 {slow_i + 1} 次耗时增加 {pct:.0f}%",
                   _rgb(MUTED)))
     return lines
 
 
 def _plot_image(analysis, shown: int, width: int, height: int, *, progressive: bool,
                 font=None, y_ticks: int = 4, metric: str = "ascent",
-                title: str = "Rep Duration (s)", ylabel: str = "Duration (s)",
+                title: str = "单次动作耗时 (秒)", ylabel: str = "耗时 (秒)",
                 scale: float = 1.0):
     """Render the timing scatter to a BGR array of exactly (height, width)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
+
+    plt.rcParams['font.sans-serif'] = ['STHeiti', 'PingFang SC', 'Heiti SC', 'Arial Unicode MS', 'SimHei', 'Noto Sans CJK SC', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
 
     fp = _plot_font(font)
 
@@ -142,12 +139,12 @@ def _plot_image(analysis, shown: int, width: int, height: int, *, progressive: b
             ax.annotate(f"{y:.2f}", (x, y), textcoords="offset points", xytext=(0, 17),
                         ha="center", color=FG, **f(17))
             if complete and distinct and j in (fast_i, slow_i):
-                tag = "fastest" if j == fast_i else "slowest"
+                tag = "最快" if j == fast_i else "最慢"
                 ax.annotate(tag, (x, y), textcoords="offset points", xytext=(0, -30),
                             ha="center", color=FAST if j == fast_i else SLOW, **f(15))
 
     ax.set_title(title, color=FG, pad=20, **f(28))
-    ax.set_xlabel("rep", color=MUTED, **f(18))
+    ax.set_xlabel("动作序号 (次)", color=MUTED, **f(18))
     ax.set_ylabel(ylabel, color=MUTED, **f(18))
     ax.tick_params(colors=MUTED, labelsize=16)
     if fp:

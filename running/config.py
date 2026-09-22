@@ -227,14 +227,14 @@ PANEL_KNEE_VALUE_SIZE = 30
 # Panel labels. The headline is the live cadence over its trailing average; the
 # sub-line carries the step count. The graph y-axis spells the unit out once
 # ("steps per minute (spm)"); the headline keeps the short form.
-PANEL_TITLE = "CADENCE"
-PANEL_UNIT = "spm"
-PANEL_STEPS_LABEL = "{steps} steps"
-PANEL_STEPS_LABEL_ONE = "{steps} step"    # the first second of any clip
+PANEL_TITLE = "实时步频"
+PANEL_UNIT = "SPM"
+PANEL_STEPS_LABEL = "累计 {steps} 步"
+PANEL_STEPS_LABEL_ONE = "累计 {steps} 步"
 
-PANEL_GRAPH_TITLE = "AVG CADENCE OVER TIME"
-PANEL_Y_LABEL = "steps per minute (spm)"
-PANEL_X_LABEL = "time (s)"
+PANEL_GRAPH_TITLE = "步频时序变化曲线"
+PANEL_Y_LABEL = "步频 (步/分钟, SPM)"
+PANEL_X_LABEL = "时间 (秒)"
 
 # ── The average knee ─────────────────────────────────────────────────────────
 # Under the cadence graph, one leg either side. This is what the contact events
@@ -320,9 +320,9 @@ PANEL_KNEE_DECIMALS = 1        # a tenth of a degree, so the figure visibly move
 # across a fifteen-second clip, which is legible and still moving.
 PANEL_KNEE_LABEL_HOLD_SECONDS = 1.0
 
-PANEL_KNEE_TITLE = "AVG KNEE SHAPE AT FOOT STRIKE"
-PANEL_KNEE_LEFT = "LEFT"
-PANEL_KNEE_RIGHT = "RIGHT"
+PANEL_KNEE_TITLE = "触地时刻膝关节平均角度"
+PANEL_KNEE_LEFT = "左腿"
+PANEL_KNEE_RIGHT = "右腿"
 PANEL_KNEE_FORMAT = "{deg}° ± {sd}°"
 PANEL_KNEE_FORMAT_NO_SD = "{deg}°"   # one strike has no spread to quote
 
@@ -338,14 +338,6 @@ PANEL_KNEE_FORMAT_NO_SD = "{deg}°"   # one strike has no spread to quote
 #   * the dim cloud is recent history -- every earlier pass, painted on and
 #     then left to fade, dense where the ankle lingers (stance, the turn at
 #     the top of the swing) and bright wherever it has passed lately. A
-#     picture of where the time has been going, without every stride since
-#     frame one stacked into one picture.
-#   * the comet is the live path, blown downwind, exactly as on the video.
-#   * the dot is the measurement: this frame's ankle, nothing added.
-#
-# Both the cloud and the comet only reach back a bounded span of real time --
-# see PANEL_ANKLE_MEMORY_HALFLIFE_SECONDS and PANEL_ANKLE_TRAIL_SECONDS -- and
-# neither is ever drawn ahead of the current frame: the shape of the loop is
 # the answer, and drawing it from frame one would be showing the future.
 PANEL_ANKLE_TITLE = "ANKLE PATH VISUALIZATION"
 PANEL_ANKLE_FEET = ("left", "right")

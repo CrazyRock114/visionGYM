@@ -46,17 +46,17 @@ def rel(path: Path) -> Path:
 def main() -> int:
     t_start = time.perf_counter()
     console.print()
-    console.rule("[bold]ViTPose: running[/]", align="center")
+    console.rule("[bold]ViTPose: 跑步步态与步频分析[/]", align="center")
 
     # ── 1. Key ───────────────────────────────────────────────────────────────
-    rule(1, "API key")
+    rule(1, "API 密钥检测")
     api_key, source = load_api_key(cfg.PROJECT_DIR)
-    console.print(f"  loaded from [green]{source}[/] ([dim]…{api_key[-4:]}[/])")
+    console.print(f"  已从 [green]{source}[/] 加载 ([dim]…{api_key[-4:]}[/])")
 
     # ── 2. Source ────────────────────────────────────────────────────────────
-    rule(2, "Source video")
+    rule(2, "源视频检测")
     if not cfg.INPUT_VIDEO.is_file():
-        console.print(f"[red]Not found:[/] {cfg.INPUT_VIDEO}")
+        console.print(f"[red]未找到视频文件:[/] {cfg.INPUT_VIDEO}")
         return 1
 
     src_info = video.probe_source(cfg.INPUT_VIDEO)
@@ -72,7 +72,7 @@ def main() -> int:
     })
 
     # ── 3. Convert (cached) ──────────────────────────────────────────────────
-    rule(3, "Convert to MP4")
+    rule(3, "视频格式转码 (MP4)")
 
     def prepare(height, label):
         """Convert to *height* (None = source), reusing a cached copy if present."""
@@ -219,14 +219,14 @@ def main() -> int:
         )
 
     # ── 5. Gait ──────────────────────────────────────────────────────────────
-    rule(5, "Gait")
+    rule(5, "跑步步态与步频分析计算")
     stamp = datetime.now().strftime(cfg.RUN_STAMP_FORMAT)
     run_dir = cfg.OUTPUT_DIR / stamp
     run_dir.mkdir(parents=True, exist_ok=True)
 
     poses_path = run_dir / "poses.json"
     poses_path.write_text(json.dumps(payload, indent=2))
-    console.print(f"  poses  -> [dim]{rel(poses_path)}[/] "
+    console.print(f"  姿态数据 -> [dim]{rel(poses_path)}[/] "
                   f"({poses_path.stat().st_size / 1e6:.1f} MB)")
 
     analysis = None
@@ -242,37 +242,30 @@ def main() -> int:
             table.add_column(style="dim", justify="right")
             table.add_column()
             for key, value in {
-                "cadence": f"[bold green]{analysis.mean_cadence:.1f} steps/min[/]",
-                "steps": f"{analysis.count}  "
-                         f"({len(analysis.steps_for('left'))} left, "
-                         f"{len(analysis.steps_for('right'))} right)",
-                "step time": f"{np.mean(analysis.intervals):.3f}s",
-                "stride time": f"{analysis.mean_stride:.3f}s",
-                # The real per-foot rate, printed for both feet precisely
-                # because it has to come out equal: the feet alternate, so a
-                # gap here would mean the detection is wrong, not the runner.
-                "stride rate": f"{analysis.foot_stride_rate('left'):.2f} spm left / "
-                               f"{analysis.foot_stride_rate('right'):.2f} spm right"
-                               f"  [dim](equal by construction)[/]",
-                "phase split": f"{analysis.phase_split()[0]:.1f}% / "
-                               f"{analysis.phase_split()[1]:.1f}%  "
-                               f"[dim](one stride, two halves)[/]",
-                "stride var": f"[bold]{analysis.stride_spread() * 1000:.1f} ms[/]  "
-                              f"[dim](stride to stride; the clean one)[/]",
-                "symmetry": f"{analysis.symmetry():.1f}%  "
-                            f"[dim](phase; NOT measurable from one side view)[/]",
-                "contact": f"{analysis.contact_mean('left'):.3f}s left / "
-                           f"{analysis.contact_mean('right'):.3f}s right  "
-                           f"[dim]({left:.1f}% / {right:.1f}%)[/]",
-                "airborne": f"{analysis.flight_ratio * 100:.0f}% of the clip",
-                "vertical osc.": f"{analysis.vertical_oscillation():.3f} leg lengths",
+                "平均步频": f"[bold green]{analysis.mean_cadence:.1f} 步/分钟 (SPM)[/]",
+                "累计步数": f"{analysis.count} 步 "
+                         f"(左腿 {len(analysis.steps_for('left'))} 步, "
+                         f"右腿 {len(analysis.steps_for('right'))} 步)",
+                "单步触地间期": f"{np.mean(analysis.intervals):.3f}s",
+                "完整复步周期": f"{analysis.mean_stride:.3f}s",
+                "左右单侧步频": f"左 {analysis.foot_stride_rate('left'):.2f} / "
+                               f"右 {analysis.foot_stride_rate('right'):.2f} SPM"
+                               f"  [dim](理论对称)[/]",
+                "左右时相占比": f"左 {analysis.phase_split()[0]:.1f}% / "
+                               f"右 {analysis.phase_split()[1]:.1f}%  "
+                               f"[dim](复步两半部分)[/]",
+                "步幅波动方差": f"[bold]{analysis.stride_spread() * 1000:.1f} ms[/]  ",
+                "触地时间(GCT)": f"左 {analysis.contact_mean('left'):.3f}s / "
+                               f"右 {analysis.contact_mean('right'):.3f}s  "
+                               f"[dim](触地占比 {left:.1f}% / {right:.1f}%)[/]",
+                "腾空时间占比": f"整段视频 {analysis.flight_ratio * 100:.0f}%",
+                "垂直振幅": f"{analysis.vertical_oscillation():.3f} 倍腿长",
             }.items():
                 table.add_row(key, value)
-            console.print(Panel(table, title="[bold]gait[/]", title_align="left",
+            console.print(Panel(table, title="[bold]步态动力学指标汇总[/]", title_align="left",
                                 expand=False))
         else:
-            console.print("  [yellow]too few foot strikes detected[/]. "
-                          "Check clearance.png")
+            console.print("  [yellow]检测到的触地步数过少[/]。请检查 clearance.png 曲线")
 
         # The failure modes that would otherwise pass silently.
         w = analysis.warnings
@@ -302,21 +295,21 @@ def main() -> int:
                           "gaps; excluded as knee landmarks[/]")
 
     # ── 6. Render ────────────────────────────────────────────────────────────
-    rule(6, "Render")
+    rule(6, "视频与步态面板渲染")
     raw = run_dir / "_raw.mp4"
     t0 = time.perf_counter()
     stats = render.render(export_info, by_index, len(frames), raw, cfg=cfg, console=console,
                           analysis=analysis)
     render_seconds = time.perf_counter() - t0
-    console.print(f"  drew poses on [bold]{stats['frames_with_pose']}/{stats['frames_written']}[/] "
-                  f"frames" + (f" ({stats['frames_held']} held)" if stats["frames_held"] else ""))
+    console.print(f"  成功在 [bold]{stats['frames_with_pose']}/{stats['frames_written']}[/] "
+                  f"帧绘制姿态" + (f" ({stats['frames_held']} 帧平滑插值)" if stats["frames_held"] else ""))
 
     out_video = run_dir / f"{cfg.INPUT_VIDEO.stem}_pose.mp4"
     t0 = time.perf_counter()
     video.encode_h264(raw, out_video, crf=cfg.OUTPUT_CRF)
     encode_seconds = time.perf_counter() - t0
     raw.unlink(missing_ok=True)   # MPEG-4 Part 2 intermediate; no player wants it
-    console.print(f"  video  -> [dim]{rel(out_video)}[/] "
+    console.print(f"  生成视频 -> [dim]{rel(out_video)}[/] "
                   f"({out_video.stat().st_size / 1e6:.1f} MB)")
 
     clearance_path = steps_path = knee_path = None
@@ -325,37 +318,34 @@ def main() -> int:
             clearance_path = run_dir / "clearance.png"
             render.plot_clearance(
                 analysis, clearance_path, cfg=cfg,
-                title=f"Ankle height: {analysis.count} strikes, "
-                      f"{analysis.mean_cadence:.1f} steps/min",
+                title=f"脚踝离地高度: {analysis.count} 次触地, "
+                      f"平均步频 {analysis.mean_cadence:.1f} 步/分",
             )
-            console.print(f"  graph  -> [dim]{rel(clearance_path)}[/]")
+            console.print(f"  脚踝高度图 -> [dim]{rel(clearance_path)}[/]")
 
         if cfg.SAVE_KNEE_PLOT and analysis.steps:
             knee_path = run_dir / "knee.png"
             left, right = (analysis.segment_ratio(f) for f in ("left", "right"))
             if render.plot_knee(
                 analysis, knee_path, cfg=cfg,
-                title=f"Knee at foot strike — {analysis.count} strikes  "
-                      f"(shank/thigh {left:.2f} left, {right:.2f} right; "
-                      f"should be ~1.0)"):
-                console.print(f"  graph  -> [dim]{rel(knee_path)}[/]")
+                title=f"触地时刻膝关节角度 — {analysis.count} 次触地  "
+                      f"(小腿/大腿比例: 左 {left:.2f}, 右 {right:.2f}; "
+                      f"标准值约为 1.0)"):
+                console.print(f"  膝关节图   -> [dim]{rel(knee_path)}[/]")
             else:
                 knee_path = None
 
         if cfg.SAVE_STEPS_PLOT and analysis.steps:
             steps_path = run_dir / "steps.png"
             render.plot_steps(analysis, steps_path, cfg=cfg,
-                              title="Per step: timing and contact, by foot")
-            console.print(f"  graph  -> [dim]{rel(steps_path)}[/]")
+                              title="单步时序与触地时间对比 (分腿统计)")
+            console.print(f"  步态分析图 -> [dim]{rel(steps_path)}[/]")
 
         gait_path = run_dir / "gait.json"
         gait_path.write_text(json.dumps({
             "fps": info.fps,
             "signal": gait.signal_config(cfg),
             "leg_length": round(analysis.leg_length, 5),
-            # The frame's width/height, which every angle and length in here was
-            # measured after correcting for. Recorded because a wrong value
-            # would skew all of them silently. See gait.analyze.
             "frame_aspect": round(analysis.frame_aspect, 5),
             "ground": {foot: round(v, 5)
                        for foot, v in analysis.ground.items()},
@@ -363,24 +353,24 @@ def main() -> int:
             **analysis.summary(),
             "series": analysis.series(),
         }, indent=2))
-        console.print(f"  gait   -> [dim]{rel(gait_path)}[/]")
+        console.print(f"  步态数据   -> [dim]{rel(gait_path)}[/]")
 
         summary_path = run_dir / "summary.txt"
         summary_path.write_text(gait.summary_text(
             analysis, video_seconds=info.duration, source=cfg.INPUT_VIDEO.name))
-        console.print(f"  summary-> [dim]{rel(summary_path)}[/]")
+        console.print(f"  文本摘要   -> [dim]{rel(summary_path)}[/]")
 
     plot_path = None
     if cfg.SAVE_JOINT_PLOT:
         plot_path = run_dir / f"{cfg.PLOT_JOINT}.png"
         if render.plot_joint(frames, info.fps, cfg.PLOT_JOINT, plot_path):
-            console.print(f"  plot   -> [dim]{rel(plot_path)}[/]")
+            console.print(f"  关节点图   -> [dim]{rel(plot_path)}[/]")
         else:
-            console.print(f"  [yellow]plot skipped[/]: {cfg.PLOT_JOINT} never visible")
+            console.print(f"  [yellow]跳过关节点图[/]: {cfg.PLOT_JOINT} 未被检测到")
             plot_path = None
 
     # ── 7. Metrics ───────────────────────────────────────────────────────────
-    rule(7, "Performance")
+    rule(7, "运行性能统计")
     total = time.perf_counter() - t_start
     metrics = timing.Metrics(
         frames=len(frames),

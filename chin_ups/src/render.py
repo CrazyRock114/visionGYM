@@ -136,6 +136,9 @@ def plot_displacement(analysis, dst: Path, *, cfg, title: str = "") -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    plt.rcParams['font.sans-serif'] = ['STHeiti', 'PingFang SC', 'Heiti SC', 'Arial Unicode MS', 'SimHei', 'Noto Sans CJK SC', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
+
     from .reps import phase_label, rep_value
 
     metric = cfg.REP_METRIC
@@ -155,10 +158,10 @@ def plot_displacement(analysis, dst: Path, *, cfg, title: str = "") -> None:
     )
 
     ax.plot(t, analysis.raw - analysis.baseline, color="#c9ced6", lw=1,
-            label="raw (torso mean)", zorder=1)
-    ax.plot(t, analysis.displacement, color="#2f6df6", lw=2.2, label="smoothed", zorder=3)
+            label="原始位移 (躯干均值)", zorder=1)
+    ax.plot(t, analysis.displacement, color="#2f6df6", lw=2.2, label="平滑轨迹", zorder=3)
     ax.axhline(0, color="#8a8f98", ls="--", lw=1.2, zorder=2,
-               label="relative zero (hanging)")
+               label="基准零位 (悬挂静止)")
 
     top = float(np.max(analysis.displacement)) if len(analysis.displacement) else 1.0
     bar = top * 1.16          # one height for every bracket, so they read as a row
@@ -186,11 +189,11 @@ def plot_displacement(analysis, dst: Path, *, cfg, title: str = "") -> None:
         # at the low point the eye goes to first.
         if metric == "moving" and a - rep.valley_time > 1.5 / 30:
             ax.axvspan(rep.valley_time, a, color="#8a8f98", alpha=0.10, zorder=0,
-                       label="dead hang (excluded)" if i == 0 else None)
+                       label="悬挂静止 (已剔除)" if i == 0 else None)
             ax.plot(rep.valley_time,
                     analysis.displacement[int(np.argmin(np.abs(t - rep.valley_time)))],
                     "o", color="#adb5bd", ms=5, zorder=4)
-            ax.annotate(f"hang {a - rep.valley_time:.2f}s",
+            ax.annotate(f"悬挂 {a - rep.valley_time:.2f}s",
                         ((rep.valley_time + a) / 2, 0), textcoords="offset points",
                         xytext=(0, -30), ha="center", fontsize=8.5, color="#868e96")
 
@@ -207,20 +210,20 @@ def plot_displacement(analysis, dst: Path, *, cfg, title: str = "") -> None:
         ax.annotate(f"{a:.2f}s", (a, a_y), textcoords="offset points",
                     xytext=(0, -17), ha="center", fontsize=9.5, color="#5c6470")
 
-    ax.set_ylabel("vertical displacement\n(fraction of frame height)")
+    ax.set_ylabel("垂直位移\n(相对于画幅高度比例)")
     ax.grid(alpha=0.25)
     # Above the axes, not inside them: any in-plot corner eventually sits on a rep.
     ax.legend(loc="lower left", bbox_to_anchor=(0, 1.015), ncol=5,
               fontsize=9, frameon=False)
-    ax.set_title(title or f"{analysis.count} reps", fontsize=13, fontweight="bold",
+    ax.set_title(title or f"{analysis.count} 次引体向上动作", fontsize=13, fontweight="bold",
                  pad=28)
 
     ax2.plot(t, analysis.head_margin, color="#2b8a3e", lw=1.6)
     ax2.axhline(0, color="#c92a2a", ls="--", lw=1.2)
     ax2.fill_between(t, 0, analysis.head_margin,
                      where=analysis.head_margin > 0, color="#2b8a3e", alpha=0.18)
-    ax2.set_ylabel("eyes above\nhands")
-    ax2.set_xlabel("time (s)")
+    ax2.set_ylabel("头部过杠间隙\n(相对高度)")
+    ax2.set_xlabel("时间 (秒)")
     ax2.grid(alpha=0.25)
 
     fig.subplots_adjust(left=0.08, right=0.98, top=0.86, bottom=0.09, hspace=0.12)

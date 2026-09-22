@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>visionGYM | 计算机视觉体能与 HYROX 官方赛事 AI 裁判系统</title>
+  <meta name="description" content="基于高精度人体关键点骨骼估计与生物力学动力学状态机，针对 HYROX 全套 8 项功能性专项运动 + 跑步区间提供全自动化裁判执裁、动作计数、周期分解与 No-Rep 违规判定。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --bg-card: #121824;
+      --bg-card-hover: #182234;
+      --bg-surface: #1e293b;
+      --border-subtle: #232f45;
+      --border-focus: #ffd700;
+      --hyrox-yellow: #ffd700;
+      --hyrox-yellow-hover: #f5c400;
+      --neon-cyan: #38bdf8;
+      --neon-green: #22c55e;
+      --neon-red: #ef4444;
+      --neon-amber: #f59e0b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-mono: 'JetBrains Mono', SFMono-Regular, Consolas, monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-glow: 0 0 25px rgba(255, 215, 0, 0.15);
+      --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.36);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Background aesthetic glow */
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100vw;
+      max-width: 1440px;
+      height: 600px;
+      background: radial-gradient(circle at 50% -20%, rgba(255, 215, 0, 0.08) 0%, rgba(56, 189, 248, 0.04) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background-color: rgba(10, 13, 20, 0.85);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--hyrox-yellow), #f59e0b);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #000;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    }
+
+    .brand-name {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .brand-name span {
+      color: var(--hyrox-yellow);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--hyrox-yellow);
+    }
+
+    .btn-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      transition: all 0.2s ease;
+    }
+
+    .btn-github:hover {
+      border-color: var(--hyrox-yellow);
+      background-color: var(--bg-card-hover);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+    }
+
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      color: var(--hyrox-yellow);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--neon-green);
+      box-shadow: 0 0 8px var(--neon-green);
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3.75rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 .highlight {
+      background: linear-gradient(90deg, #ffd700, #ffb700, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      max-width: 760px;
+      margin: 0 auto 2.25rem;
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--hyrox-yellow), #f59e0b);
+      color: #000;
+      font-weight: 700;
+      font-family: var(--font-display);
+      padding: 0.85rem 1.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.35);
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(255, 215, 0, 0.5);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-card);
+      color: var(--text-primary);
+      font-weight: 600;
+      padding: 0.85rem 1.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 1rem;
+      border: 1px solid var(--border-subtle);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--neon-cyan);
+      background-color: var(--bg-card-hover);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title span {
+      color: var(--hyrox-yellow);
+    }
+
+    .section-desc {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Hyrox Stations Nav Pills */
+    .station-nav-wrapper {
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      margin-bottom: 2rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-subtle) transparent;
+    }
+
+    .station-nav {
+      display: flex;
+      gap: 0.5rem;
+      min-width: max-content;
+    }
+
+    .station-tab {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 0.65rem 1.15rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .station-tab .num {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .station-tab:hover {
+      background-color: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--text-muted);
+    }
+
+    .station-tab.active {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05));
+      border-color: var(--hyrox-yellow);
+      color: var(--hyrox-yellow);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+    }
+
+    .station-tab.active .num {
+      color: var(--hyrox-yellow);
+    }
+
+    /* Interactive Workspace (Canvas + Dashboard) */
+    .interactive-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    @media (min-width: 992px) {
+      .interactive-grid {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+    }
+
+    /* Left Console: Canvas Player */
+    .canvas-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .station-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .station-badge h3 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      color: var(--text-primary);
+    }
+
+    .mode-switch-group {
+      display: flex;
+      background-color: var(--bg-dark);
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .mode-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mode-btn.active.valid {
+      background-color: rgba(34, 197, 94, 0.2);
+      color: var(--neon-green);
+    }
+
+    .mode-btn.active.violation {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: var(--neon-red);
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background-color: #07090e;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    canvas#simulatorCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Referee Banner Overlay */
+    .referee-banner {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      right: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all 0.25s ease;
+      z-index: 10;
+    }
+
+    .referee-banner.status-valid {
+      background-color: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: var(--neon-green);
+    }
+
+    .referee-banner.status-norep {
+      background-color: rgba(239, 68, 68, 0.25);
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      color: var(--neon-red);
+      animation: pulseAlert 0.8s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+      from { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+      to { transform: scale(1.01); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+    }
+
+    .canvas-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 1rem;
+    }
+
+    .playback-btns {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-ctrl {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ctrl:hover {
+      background-color: var(--bg-card-hover);
+      border-color: var(--hyrox-yellow);
+    }
+
+    .sim-hint {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+    }
+
+    /* Right Console: Specs & Telemetry Panel */
+    .specs-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .telemetry-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .stat-box {
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-val {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--hyrox-yellow);
+    }
+
+    .rule-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .rule-block {
+      background-color: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+    }
+
+    .rule-block-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--neon-cyan);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .rule-block-title.warn {
+      color: var(--neon-amber);
+    }
+
+    .rule-block-title.danger {
+      color: var(--neon-red);
+    }
+
+    .rule-block p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Live Waterfall Duration Chart */
+    .chart-section {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    .waterfall-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      height: 120px;
+      padding-top: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .rep-bar {
+      flex: 1;
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      position: relative;
+      transition: height 0.3s ease;
+      cursor: pointer;
+    }
+
+    .rep-bar.valid {
+      background: linear-gradient(180deg, rgba(34, 197, 94, 0.8), rgba(34, 197, 94, 0.4));
+      border: 1px solid var(--neon-green);
+    }
+
+    .rep-bar.norep {
+      background: linear-gradient(180deg, rgba(239, 68, 68, 0.8), rgba(239, 68, 68, 0.4));
+      border: 1px solid var(--neon-red);
+    }
+
+    .rep-bar span {
+      position: absolute;
+      top: -22px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* Output Gallery Cards */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .gallery-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .gallery-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--hyrox-yellow);
+    }
+
+    .gallery-img-wrapper {
+      width: 100%;
+      height: 220px;
+      background-color: #07090e;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gallery-img-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .gallery-card:hover .gallery-img-wrapper img {
+      transform: scale(1.04);
+    }
+
+    .gallery-content {
+      padding: 1.25rem;
+    }
+
+    .gallery-tag {
+      font-size: 0.75rem;
+      color: var(--hyrox-yellow);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    .gallery-content h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .gallery-content p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    /* Original 4 Demos */
+    .demos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .demo-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+
+    .demo-card:hover {
+      border-color: var(--neon-cyan);
+      background-color: var(--bg-card-hover);
+    }
+
+    .demo-badge {
+      align-self: flex-start;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background-color: rgba(56, 189, 248, 0.1);
+      color: var(--neon-cyan);
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .demo-card h4 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .demo-card p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .demo-model {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Terminal Quickstart Card */
+    .terminal-card {
+      background-color: #070a10;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 4rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background-color: #ef4444; }
+    .dot-yellow { background-color: #f59e0b; }
+    .dot-green { background-color: #22c55e; }
+
+    .terminal-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .code-block {
+      background-color: #0a0e17;
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      position: relative;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+
+    .code-block code {
+      display: block;
+      line-height: 1.6;
+    }
+
+    .code-comment {
+      color: #64748b;
+    }
+
+    .btn-copy {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-copy:hover {
+      color: var(--hyrox-yellow);
+      border-color: var(--hyrox-yellow);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 3rem 1.5rem;
+      background-color: var(--bg-card);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--hyrox-yellow);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <div class="brand-logo">V</div>
+        <div class="brand-name">vision<span>GYM</span></div>
+      </a>
+      <div class="nav-links">
+        <a href="#hyrox-stations">HYROX 8 站</a>
+        <a href="#classic-demos">原版 4 大演示</a>
+        <a href="#quickstart">快速开始</a>
+        <a href="https://github.com/CrazyRock114/visionGYM" target="_blank" rel="noopener" class="btn-github">
+          <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub 仓库
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="badge-pill">
+      <div class="badge-dot"></div>
+      Hyrox 官方体能耐力锦标赛 · 8 项运动 + 跑步区间专用视觉裁判系统
+    </div>
+    <h1>全自动化计算机视觉 <br><span class="highlight">运动生物力学与 AI 执裁平台</span></h1>
+    <p>
+      针对 HYROX 全球赛事标准的 8 大功能性工作站（滑雪机、雪橇推拉、波比跳远、划船机、农夫行走、沙袋箭步蹲、药球掷高）及 8x1km 跑步区间，结合 COCO-17 骨架动力学与官方 Rulebook 裁判规则，实现微秒级 No-Rep 违规识别与体能衰退分析。
+    </p>
+    <div class="hero-actions">
+      <a href="#hyrox-stations" class="btn-primary">进入 HYROX 8 站交互式控制台</a>
+      <a href="https://github.com/CrazyRock114/visionGYM" target="_blank" rel="noopener" class="btn-secondary">查看开源代码库</a>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Section: Hyrox Stations Interactive Console -->
+    <section id="hyrox-stations">
+      <div class="section-title">
+        <span>01</span> HYROX 8 项官方运动交互式 AI 控制台
+      </div>
+      <div class="section-desc">
+        切换查看各个站点的官方裁判规则 (Rulebook)、视觉几何判定算法、No-Rep 触发逻辑与骨骼动力学实时演示：
+      </div>
+
+      <!-- Station Nav Pills -->
+      <div class="station-nav-wrapper">
+        <div class="station-nav" id="stationNav">
+          <button class="station-tab" data-station="1_skierg"><span class="num">ST.01</span> 滑雪机 SkiErg</button>
+          <button class="station-tab" data-station="2_sled_push"><span class="num">ST.02</span> 雪橇推 Sled Push</button>
+          <button class="station-tab" data-station="3_sled_pull"><span class="num">ST.03</span> 雪橇拉 Sled Pull</button>
+          <button class="station-tab" data-station="4_burpees"><span class="num">ST.04</span> 波比跳远 Burpee Jumps</button>
+          <button class="station-tab" data-station="5_rowing"><span class="num">ST.05</span> 划船机 Rowing</button>
+          <button class="station-tab" data-station="6_farmers_carry"><span class="num">ST.06</span> 农夫行走 Farmers</button>
+          <button class="station-tab" data-station="7_lunges"><span class="num">ST.07</span> 沙袋箭步蹲 Lunges</button>
+          <button class="station-tab active" data-station="8_wall_balls"><span class="num">ST.08</span> 药球掷高 Wall Balls</button>
+          <button class="station-tab" data-station="hyrox_run"><span class="num">RUN</span> 8x1km 跑步区间</button>
+        </div>
+      </div>
+
+      <!-- Interactive Grid: Canvas + Specs -->
+      <div class="interactive-grid">
+        <!-- Left: Canvas Simulator -->
+        <div class="canvas-card">
+          <div class="canvas-header">
+            <div class="station-badge">
+              <h3 id="currentStationTitle">Station 8: 100 Wall Balls (药球掷高)</h3>
+            </div>
+            <div class="mode-switch-group">
+              <button class="mode-btn active valid" id="btnModeValid">正常合规示范</button>
+              <button class="mode-btn violation" id="btnModeViolation">触发违规 (No-Rep)</button>
+            </div>
+          </div>
+
+          <div class="canvas-container">
+            <!-- Referee Alert Banner -->
+            <div class="referee-banner status-valid" id="refereeBanner">
+              <span id="bannerStatus">[合规 REP] 动作完整达标</span>
+              <span id="bannerDetail" style="font-family: var(--font-mono); font-size: 0.75rem;">膝关节内角 88° &lt; 95°</span>
+            </div>
+            <!-- Canvas -->
+            <canvas id="simulatorCanvas" width="640" height="380"></canvas>
+          </div>
+
+          <div class="canvas-controls">
+            <div class="playback-btns">
+              <button class="btn-ctrl" id="btnPlayPause">暂停 / 播放</button>
+              <button class="btn-ctrl" id="btnReset">重置计数</button>
+            </div>
+            <div class="sim-hint">
+              实时关键点追踪: 髋/膝/踝/肩 2D 角度计算
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Telemetry & Rules -->
+        <div class="specs-card">
+          <div class="telemetry-row">
+            <div class="stat-box">
+              <div class="stat-label">有效计数</div>
+              <div class="stat-val" id="statValidCount">14</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">违规 (No-Rep)</div>
+              <div class="stat-val" id="statViolationCount" style="color: var(--neon-red);">1</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">动作达标率</div>
+              <div class="stat-val" id="statPassRate" style="color: var(--neon-green);">93.3%</div>
+            </div>
+          </div>
+
+          <div class="rule-accordion">
+            <div class="rule-block">
+              <div class="rule-block-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Hyrox 官方竞赛要求 (Rulebook)
+              </div>
+              <p id="ruleOfficial">屈髋折痕必须明确低于膝盖骨上缘（大腿下破水平线）；站起时膝关节和髋关节完全锁死伸展，并将药球掷向目标靶标。</p>
+            </div>
+
+            <div class="rule-block">
+              <div class="rule-block-title warn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                AI 计算机视觉判定逻辑 (CV Logic)
+              </div>
+              <p id="ruleCV">通过双侧髋部与膝盖 Y 坐标差判断深度，结合膝关节内角内插值（需小于 95° 且 y_hip ≥ y_knee），站立相检测膝髋是否完全恢复 170° 以上锁定角。</p>
+            </div>
+
+            <div class="rule-block">
+              <div class="rule-block-title danger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                违规 (No-Rep) 判定机制
+              </div>
+              <p id="ruleViolation">深蹲深度未达折痕过膝标准，或站立起身时未伸展直立偷掷药球，将被直接判处 No-Rep 并不予计入官方成绩。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waterfall Bars Section -->
+      <div class="chart-section">
+        <div class="chart-header">
+          <div class="chart-title">单次动作耗时瀑布流分析 (Rep Duration Timeline)</div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-color" style="background-color: var(--neon-green);"></div> 合规有效 (Valid)</div>
+            <div class="legend-item"><div class="legend-color" style="background-color: var(--neon-red);"></div> 违规无效 (No-Rep)</div>
+          </div>
+        </div>
+        <div class="waterfall-bars" id="waterfallBars">
+          <!-- Dynamic Bars -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: Output Gallery -->
+    <section>
+      <div class="section-title">
+        <span>02</span> 系统实测渲染与动力学产物展示
+      </div>
+      <div class="section-desc">
+        每次分析自动输出左侧人体骨架与违规警示 + 右侧暗黑赛事看板合成视频、高清分析图表及执裁报告：
+      </div>
+
+      <div class="gallery-grid">
+        <div class="gallery-card">
+          <div class="gallery-img-wrapper">
+            <img src="./hyrox/readme_images/hyrox_wall_balls_frame.jpg" alt="Wall Balls 实时裁判合成画面" loading="lazy">
+          </div>
+          <div class="gallery-content">
+            <div class="gallery-tag">HD Video Composite</div>
+            <h4>实时裁判与数据侧面板合成</h4>
+            <p>左侧高亮 COCO-17 骨架、深度角标尺与违规横幅，右侧集成赛事级暗黑数据面板与动作瀑布流看板。</p>
+          </div>
+        </div>
+
+        <div class="gallery-card">
+          <div class="gallery-img-wrapper">
+            <img src="./hyrox/readme_images/hyrox_wall_balls_chart.png" alt="Wall Balls 动作耗时与疲劳图表" loading="lazy">
+          </div>
+          <div class="gallery-content">
+            <div class="gallery-tag">Matplotlib CJK Analytics</div>
+            <h4>药球单次耗时与疲劳衰竭拟合</h4>
+            <p>支持中文自适应字体无损渲染，红绿柱分明标出 No-Rep 与有效次数，回归拟合动作周期衰减趋势。</p>
+          </div>
+        </div>
+
+        <div class="gallery-card">
+          <div class="gallery-img-wrapper">
+            <img src="./hyrox/readme_images/hyrox_lunges_chart.png" alt="沙袋箭步蹲双腿对称性分析" loading="lazy">
+          </div>
+          <div class="gallery-content">
+            <div class="gallery-tag">Bilateral Symmetry</div>
+            <h4>沙袋箭步蹲后膝触地与站立检验</h4>
+            <p>追踪左右腿交替步态，后膝触地深度率（需达地面接触），站立完全伸展角双重裁判检验。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: Classic 4 Demos -->
+    <section id="classic-demos">
+      <div class="section-title">
+        <span>03</span> 原版 4 大经典视觉项目汉化与升级
+      </div>
+      <div class="section-desc">
+        基于 Jeremy Ipark 的原版计算机视觉演示，全面升级 CJK 中文字体探测与专业中文看板：
+      </div>
+
+      <div class="demos-grid">
+        <div class="demo-card">
+          <div>
+            <div class="demo-badge">体能训练</div>
+            <h4>chin_ups (引体向上)</h4>
+            <p>自动识别引体向上动作，精确统计次数，精细划分拉起与下落耗时，生成完整中文分析面板。</p>
+          </div>
+          <div class="demo-model">模型: ViTPose-Plus-Large</div>
+        </div>
+
+        <div class="demo-card">
+          <div>
+            <div class="demo-badge">跑步步态</div>
+            <h4>running (跑步分析)</h4>
+            <p>跑步步频 (SPM) 测算、每步触地瞬间检测、触地瞬间膝关节屈曲形态平均与中文仪表盘。</p>
+          </div>
+          <div class="demo-model">模型: ViTPose-Plus-Large</div>
+        </div>
+
+        <div class="demo-card">
+          <div>
+            <div class="demo-badge">动作同步</div>
+            <h4>dance_sync (舞蹈同步率)</h4>
+            <p>对比多位舞者在同一编舞下的动作时空一致性，自动计算骨架相似度得分与关键帧对比。</p>
+          </div>
+          <div class="demo-model">模型: ViTPose-Plus-Large</div>
+        </div>
+
+        <div class="demo-card">
+          <div>
+            <div class="demo-badge">攀岩路线</div>
+            <h4>rock_climbing (抱石分析)</h4>
+            <p>自动分割攀岩抱石支点，识别攀爬者触碰岩点顺序，多轮尝试路线对比及中文叠加。</p>
+          </div>
+          <div class="demo-model">模型: SAM 3.1 + ViTPose</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: Quickstart -->
+    <section id="quickstart">
+      <div class="section-title">
+        <span>04</span> 快速安装与本地 CLI 启动指南
+      </div>
+      <div class="section-desc">
+        支持完全离线运行（内建生物力学合成仿真与违规注入引擎，无需 API 即可体验完整功能）：
+      </div>
+
+      <div class="terminal-card">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+          </div>
+          <div class="terminal-title">bash · visionGYM CLI</div>
+        </div>
+
+        <div class="code-block">
+          <button class="btn-copy" onclick="copyCode(this)">复制命令</button>
+          <code>
+<span class="code-comment"># 1. 克隆代码库</span>
+git clone https://github.com/CrazyRock114/visionGYM.git
+cd visionGYM
+
+<span class="code-comment"># 2. 创建并激活虚拟环境 (Python 3.10+)</span>
+uv venv && source .venv/bin/activate
+uv pip install -r chin_ups/requirements.txt -r running/requirements.txt
+
+<span class="code-comment"># 3. 运行 Hyrox 药球模拟测试 (内置生物力学姿态流与违规注入)</span>
+python hyrox/main.py --station 8_wall_balls
+
+<span class="code-comment"># 4. 分析你录制的真实比赛/训练视频</span>
+python hyrox/main.py --station 8_wall_balls --video /path/to/my_wallballs.mp4
+
+<span class="code-comment"># 5. 一键自动化全套跑测 (全部 8 项运动 + 跑步区间)</span>
+python hyrox/main.py --test-all
+          </code>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/CrazyRock114/visionGYM" target="_blank" rel="noopener">GitHub 仓库</a>
+      <a href="https://github.com/CrazyRock114/visionGYM/blob/main/README_CN.md" target="_blank" rel="noopener">中文使用手册</a>
+      <a href="https://github.com/CrazyRock114/visionGYM/blob/main/hyrox/README.md" target="_blank" rel="noopener">Hyrox 裁判规范</a>
+    </div>
+    <p>© 2026 visionGYM · 基于 Apache-2.0 许可证开源 · 专为体能耐力与竞技执裁而设计</p>
+  </footer>
+
+  <!-- Interactive Simulator Script -->
+  <script>
+    // Stations Data
+    const STATIONS = {
+      '1_skierg': {
+        title: 'Station 1: 1000m SkiErg (滑雪机)',
+        official: '双臂充分过头展开，向下拉动冲程至髋部后方；保持三屈三伸（髋、膝、踝）同步发力，完整完成 1000m 冲程。',
+        cv: '检测双腕垂直位移冲程深度、髋膝伸展屈曲角与躯干前倾时序，计算拉桨（Drive）与回桨（Recovery）时间比。',
+        violation: '冲程过浅或未达过头预备即提早下压发力，将降低冲程做功效率并记录动作不达标。',
+        unit: 'SPM 桨频',
+        metricVal: '38 SPM',
+        repName: '冲程',
+        validCount: 32,
+        violationCount: 2,
+        durations: [1.2, 1.3, 1.25, 1.8, 1.28, 1.32, 1.3, 1.29]
+      },
+      '2_sled_push': {
+        title: 'Station 2: 50m Sled Push (雪橇推)',
+        official: '双手握持把手，保持身体处于推进动力线，连续向前蹬步直至推完全程 50 米。',
+        cv: '肩-髋-踝躯干驱动角持续计算（目标最佳推力角 40°-50°），跟踪下肢蹬踏步频与推进速度。',
+        violation: '躯干角度过于直立（>65°）导致驱动力线断裂，或推进过程中发生持续卡顿失速（Stall）。',
+        unit: '驱动角',
+        metricVal: '44°',
+        repName: '蹬步',
+        validCount: 48,
+        violationCount: 3,
+        durations: [0.8, 0.82, 0.85, 1.4, 0.88, 0.9, 0.92, 0.95]
+      },
+      '3_sled_pull': {
+        title: 'Station 3: 50m Sled Pull (雪橇拉)',
+        official: '站立于指定方格内，低重心抗阻后拉绳索；禁止越过竞赛线，连续拽拉至雪橇触及线标。',
+        cv: '检测身体重心高度波动、倒步步频与双臂后拉冲程节奏，分析抗阻拉拽下的下肢支撑稳定性。',
+        violation: '重心失稳漂移、后撤拉拽停滞中断或动作节奏剧烈脱节。',
+        unit: '步频',
+        metricVal: '52 SPM',
+        repName: '后拉',
+        validCount: 42,
+        violationCount: 1,
+        durations: [1.1, 1.15, 1.12, 1.2, 1.18, 1.22, 1.25, 1.24]
+      },
+      '4_burpees': {
+        title: 'Station 4: 80m Burpee Broad Jumps (波比跳远)',
+        official: '每次波比必须胸部完全贴地 (Chest to Deck)；起身向前跳远时必须双脚同时起跳，严禁单腿跨步！',
+        cv: '1. 胸腔关键点与地面垂直距离极值检测；2. 双侧脚踝离地时间差 (Δt > 80ms 触发 No-Rep 判罚)。',
+        violation: '胸部未完全触底，或双脚未能同步离地起跳（单腿跨步），主裁判将判处该次跳远无效 (No-Rep)！',
+        unit: '起跳同步差',
+        metricVal: '18 ms',
+        repName: '波比跳',
+        validCount: 18,
+        violationCount: 2,
+        durations: [2.6, 2.7, 2.65, 3.8, 2.8, 2.85, 2.9, 3.1]
+      },
+      '5_rowing': {
+        title: 'Station 5: 1000m Rowing (划船机)',
+        official: '标准发力次序：蹬腿 -> 伸髋 -> 拉臂；出水时刻躯干后倾 10°-15°，回桨反向复位。',
+        cv: '膝关节伸展、双腕水平行程与出水后仰角 (Layback Angle) 状态机划分，计算实时桨频 SPM。',
+        violation: '出水过度后仰或弓背代偿，回桨过早屈膝导致桨柄碰撞。',
+        unit: '桨频 SPM',
+        metricVal: '29 SPM',
+        repName: '冲程',
+        validCount: 35,
+        violationCount: 1,
+        durations: [1.9, 1.95, 1.92, 2.0, 2.05, 2.8, 2.08, 2.12]
+      },
+      '6_farmers_carry': {
+        title: 'Station 6: 200m Farmers Carry (农夫行走)',
+        official: '双手持重物（男子 2x24kg / 女子 2x16kg）行进 200 米，保持躯干直立中立位，严禁中途扔壶。',
+        cv: '左右肩高差、骨盆水平度与躯干侧倾角 (Lateral Sway) 标准差计算，监测负重步频与核心疲劳度。',
+        violation: '核心力竭导致躯干剧烈侧倾摇晃或单侧溜肩代偿，失稳警告。',
+        unit: '侧倾波动',
+        metricVal: '2.1°',
+        repName: '步态周期',
+        validCount: 65,
+        violationCount: 4,
+        durations: [0.55, 0.56, 0.58, 0.57, 0.59, 0.62, 0.95, 0.61]
+      },
+      '7_lunges': {
+        title: 'Station 7: 100m Sandbag Lunges (沙袋箭步蹲)',
+        official: '肩扛沙袋行进，每步后膝必须明确触地；迈入下一步前必须双腿完全站立直立锁膝锁髋。',
+        cv: '后膝离地最低距离检测（触地标定），站立相双膝屈伸角度检测（直立锁紧角需达到 170° 以上）。',
+        violation: '后膝未触地偷步，或站立时膝髋未锁紧即匆忙前迈，直接判定 No-Rep 无效并勒令退回重做！',
+        unit: '触地判定',
+        metricVal: '触地达标',
+        repName: '弓步',
+        validCount: 22,
+        violationCount: 3,
+        durations: [1.8, 1.85, 1.9, 2.6, 1.92, 1.98, 2.05, 2.8]
+      },
+      '8_wall_balls': {
+        title: 'Station 8: 100 Wall Balls (药球掷高)',
+        official: '屈髋折痕必须明确低于膝盖骨上缘（大腿下破水平线）；站起时膝关节和髋关节完全锁死伸展，并将药球掷向目标靶标。',
+        cv: '双侧髋部与膝盖 Y 坐标差判断深度，结合膝关节内角（需小于 95° 且 y_hip ≥ y_knee），站立相检测膝髋是否完全恢复 170° 以上锁定角。',
+        violation: '深蹲深度未达折痕过膝标准，或站立起身时未伸展直立偷掷药球，将被直接判处 No-Rep 并不予计入官方成绩。',
+        unit: '深蹲角度',
+        metricVal: '88°',
+        repName: '药球掷高',
+        validCount: 14,
+        violationCount: 1,
+        durations: [2.1, 2.2, 2.15, 2.3, 3.4, 2.25, 2.35, 2.4]
+      },
+      'hyrox_run': {
+        title: 'Running: 8 x 1km Running (高疲劳体能跑)',
+        official: '在 8 大力量站之间交替完成的 8 组 1km 衔接跑，要求保持体能配速节奏与步频稳定性。',
+        cv: '脚踝垂直位移波形识别每步触地瞬间 (Foot Strike)，实时测算步频 SPM、触地时间 (GCT) 与左右对称性。',
+        violation: '步频急剧跳水衰减（体能崩盘），或单侧支撑时间过长预警伤病风险。',
+        unit: '跑步步频',
+        metricVal: '174 SPM',
+        repName: '步频',
+        validCount: 88,
+        violationCount: 2,
+        durations: [0.34, 0.35, 0.34, 0.36, 0.35, 0.36, 0.42, 0.37]
+      }
+    };
+
+    let currentStationKey = '8_wall_balls';
+    let isViolationMode = false;
+    let isPlaying = true;
+    let animFrame = 0;
+
+    // DOM Elements
+    const canvas = document.getElementById('simulatorCanvas');
+    const ctx = canvas.getContext('2d');
+    const titleEl = document.getElementById('currentStationTitle');
+    const ruleOfficialEl = document.getElementById('ruleOfficial');
+    const ruleCVEl = document.getElementById('ruleCV');
+    const ruleViolationEl = document.getElementById('ruleViolation');
+    const statValidEl = document.getElementById('statValidCount');
+    const statViolationEl = document.getElementById('statViolationCount');
+    const statPassRateEl = document.getElementById('statPassRate');
+    const refereeBanner = document.getElementById('refereeBanner');
+    const bannerStatus = document.getElementById('bannerStatus');
+    const bannerDetail = document.getElementById('bannerDetail');
+    const waterfallBars = document.getElementById('waterfallBars');
+
+    // Setup Canvas Scale
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Render Waterfall Bars
+    function updateWaterfall() {
+      const data = STATIONS[currentStationKey];
+      waterfallBars.innerHTML = '';
+      data.durations.forEach((d, i) => {
+        const bar = document.createElement('div');
+        const isNoRep = d > 2.5 && (currentStationKey === '8_wall_balls' || currentStationKey === '4_burpees' || currentStationKey === '7_lunges' || currentStationKey === '1_skierg' || currentStationKey === '5_rowing');
+        bar.className = `rep-bar ${isNoRep ? 'norep' : 'valid'}`;
+        const heightPct = Math.min(100, Math.max(20, (d / 4.0) * 100));
+        bar.style.height = `${heightPct}%`;
+        bar.innerHTML = `<span>${d}s</span>`;
+        waterfallBars.appendChild(bar);
+      });
+    }
+
+    // Switch Station
+    function setStation(key) {
+      currentStationKey = key;
+      const data = STATIONS[key];
+      titleEl.innerText = data.title;
+      ruleOfficialEl.innerText = data.official;
+      ruleCVEl.innerText = data.cv;
+      ruleViolationEl.innerText = data.violation;
+
+      const total = data.validCount + data.violationCount;
+      const rate = ((data.validCount / total) * 100).toFixed(1);
+      statValidEl.innerText = data.validCount;
+      statViolationEl.innerText = data.violationCount;
+      statPassRateEl.innerText = `${rate}%`;
+
+      document.querySelectorAll('.station-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.getAttribute('data-station') === key);
+      });
+
+      updateWaterfall();
+      updateBanner();
+    }
+
+    // Tab Buttons
+    document.querySelectorAll('.station-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        setStation(tab.getAttribute('data-station'));
+      });
+    });
+
+    // Mode Buttons
+    const btnValid = document.getElementById('btnModeValid');
+    const btnViolation = document.getElementById('btnModeViolation');
+
+    btnValid.addEventListener('click', () => {
+      isViolationMode = false;
+      btnValid.classList.add('active');
+      btnViolation.classList.remove('active');
+      updateBanner();
+    });
+
+    btnViolation.addEventListener('click', () => {
+      isViolationMode = true;
+      btnViolation.classList.add('active');
+      btnValid.classList.remove('active');
+      updateBanner();
+    });
+
+    function updateBanner() {
+      if (!isViolationMode) {
+        refereeBanner.className = 'referee-banner status-valid';
+        bannerStatus.innerText = `[合规 REP] 动作标准达标`;
+        bannerDetail.innerText = `动作位移与关节角度完全符合 HYROX 官方规则`;
+      } else {
+        refereeBanner.className = 'referee-banner status-norep';
+        if (currentStationKey === '8_wall_balls') {
+          bannerStatus.innerText = `[警示 NO-REP] 深蹲深度不足`;
+          bannerDetail.innerText = `屈髋折痕未低于膝盖上缘 (当前膝角 104° > 95°)`;
+        } else if (currentStationKey === '7_lunges') {
+          bannerStatus.innerText = `[警示 NO-REP] 后膝未触地 / 未直立锁定`;
+          bannerDetail.innerText = `后膝离地高度 14cm，判定偷步`;
+        } else if (currentStationKey === '4_burpees') {
+          bannerStatus.innerText = `[警示 NO-REP] 单腿跨步违规`;
+          bannerDetail.innerText = `双脚起跳离地时差 140ms > 80ms 限制`;
+        } else {
+          bannerStatus.innerText = `[警示 NO-REP] 动力学不达标`;
+          bannerDetail.innerText = `躯干驱动角或动作行程未达竞赛规范`;
+        }
+      }
+    }
+
+    // Controls
+    document.getElementById('btnPlayPause').addEventListener('click', () => {
+      isPlaying = !isPlaying;
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      animFrame = 0;
+    });
+
+    // Kinematic Skeleton Drawer
+    function drawSkeleton() {
+      const rect = canvas.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Arena grid background
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+
+      // Ground Line
+      const groundY = H - 50;
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(30, groundY);
+      ctx.lineTo(W - 30, groundY);
+      ctx.stroke();
+
+      // Time progression
+      if (isPlaying) animFrame += 0.045;
+      const t = Math.sin(animFrame); // -1 to 1
+      const phase = (t + 1) / 2; // 0 to 1
+
+      const centerX = W * 0.45;
+
+      // Draw specialized station skeleton
+      if (currentStationKey === '8_wall_balls') {
+        // Wall Balls: Squat depth + Ball toss
+        const maxDepth = isViolationMode ? 0.45 : 0.88; // Shallow squat if violation
+        const squatDepth = phase * maxDepth;
+
+        const hipY = groundY - 140 + squatDepth * 70;
+        const kneeY = groundY - 70;
+        const kneeX = centerX + 25;
+        const ankleX = centerX + 15;
+        const ankleY = groundY;
+        const shoulderY = hipY - 70;
+        const headY = shoulderY - 25;
+
+        // Ball position
+        let ballY = shoulderY - 10;
+        let ballX = centerX + 30;
+        if (phase < 0.25) {
+          ballY = shoulderY - 10 - (1 - phase * 4) * 80; // toss in the air
+        }
+
+        drawPerson(centerX, headY, shoulderY, hipY, kneeX, kneeY, ankleX, ankleY);
+
+        // Draw Medicine Ball
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#ffd700';
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3m Target Line
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(ballX - 40, 60);
+        ctx.lineTo(ballX + 40, 60);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillText('3.05m 靶标', ballX + 45, 64);
+
+        // Angle indicator on knee
+        const kneeAngle = isViolationMode ? Math.round(108 - phase * 10) : Math.round(165 - phase * 80);
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.fillText(`膝角: ${kneeAngle}°`, kneeX + 15, kneeY);
+
+      } else if (currentStationKey === '7_lunges') {
+        // Sandbag Lunges: Forward step + rear knee touch
+        const lungePhase = phase;
+        const rearKneeY = groundY - (isViolationMode ? (25 + (1 - lungePhase) * 20) : (5 + (1 - lungePhase) * 45));
+        
+        const frontHipX = centerX + 20;
+        const hipY = groundY - 120 + lungePhase * 35;
+        const frontKneeX = frontHipX + 45;
+        const frontKneeY = groundY - 45;
+        const frontFootX = frontKneeX + 10;
+        
+        const rearFootX = centerX - 60;
+        const rearKneeX = centerX - 10;
+        const shoulderY = hipY - 65;
+
+        // Sandbag on shoulders
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(centerX + 10, shoulderY - 14, 34, 16);
+
+        // Draw Head, Torso, Limbs
+        drawBone(centerX + 25, hipY - 90, centerX + 25, shoulderY); // head
+        drawBone(centerX + 25, shoulderY, centerX + 20, hipY); // torso
+        drawBone(centerX + 20, hipY, frontKneeX, frontKneeY); // front thigh
+        drawBone(frontKneeX, frontKneeY, frontFootX, groundY); // front calf
+        drawBone(centerX + 20, hipY, rearKneeX, rearKneeY); // rear thigh
+        drawBone(rearKneeX, rearKneeY, rearFootX, groundY); // rear calf
+
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        const heightNotice = isViolationMode ? '后膝未触地 (14cm)' : '后膝轻触地面 (0cm)';
+        ctx.fillText(heightNotice, rearKneeX - 30, rearKneeY - 10);
+
+      } else if (currentStationKey === '4_burpees') {
+        // Burpee Broad Jump: drop to floor -> jump forward
+        let hipY = groundY - 130;
+        let shoulderY = hipY - 60;
+        let kneeX = centerX;
+        let kneeY = groundY - 60;
+        
+        if (phase < 0.5) {
+          // Chest to floor
+          const p = phase * 2;
+          hipY = groundY - 20 - (1 - p) * 110;
+          shoulderY = groundY - 15 - (1 - p) * 110;
+          drawBone(centerX - 40, shoulderY, centerX + 40, hipY);
+          ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+          ctx.font = '10px JetBrains Mono';
+          ctx.fillText(isViolationMode ? '胸部未完全触底!' : '胸部贴地达标 (Deck touch)', centerX - 30, groundY - 30);
+        } else {
+          // Jump phase
+          const p = (phase - 0.5) * 2;
+          const jumpH = Math.sin(p * Math.PI) * 55;
+          hipY = groundY - 130 - jumpH;
+          shoulderY = hipY - 60;
+          drawPerson(centerX + p * 60, shoulderY - 20, shoulderY, hipY, centerX + p * 60 + 10, groundY - 60 - jumpH, centerX + p * 60, groundY - jumpH);
+          ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+          ctx.font = '10px JetBrains Mono';
+          ctx.fillText(isViolationMode ? '双脚离地差: 140ms' : '双脚同步起跳: 18ms', centerX + 10, groundY - 100 - jumpH);
+        }
+
+      } else {
+        // Generic athletic pose
+        const hipY = groundY - 130 + phase * 20;
+        const shoulderY = hipY - 65;
+        drawPerson(centerX, shoulderY - 20, shoulderY, hipY, centerX + 15, groundY - 65, centerX, groundY);
+      }
+
+      requestAnimationFrame(drawSkeleton);
+    }
+
+    function drawPerson(headX, headY, shoulderY, hipY, kneeX, kneeY, footX, footY) {
+      // Head
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(headX, headY, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Torso
+      drawBone(headX, shoulderY, headX, hipY);
+
+      // Thigh & Calf
+      drawBone(headX, hipY, kneeX, kneeY);
+      drawBone(kneeX, kneeY, footX, footY);
+
+      // Arms
+      drawBone(headX, shoulderY, headX + 25, shoulderY + 30);
+      drawBone(headX + 25, shoulderY + 30, headX + 35, shoulderY + 15);
+    }
+
+    function drawBone(x1, y1, x2, y2) {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // Joints
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.arc(x1, y1, 3.5, 0, Math.PI * 2);
+      ctx.arc(x2, y2, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Code copy helper
+    function copyCode(btn) {
+      const code = btn.nextElementSibling.innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        btn.innerText = '已复制!';
+        setTimeout(() => { btn.innerText = '复制命令'; }, 2000);
+      });
+    }
+
+    // Initialize
+    setStation('8_wall_balls');
+    drawSkeleton();
+  </script>
+</body>
+</html>

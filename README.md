@@ -2,8 +2,11 @@
 
 Real-world computer vision demos.
 
+> **[📖 简体中文文档与 HYROX 体能赛事优化指南 (Chinese Documentation)](README_CN.md)**
+
 | Project | What it does | Key model |
 |---|---|---|
+| **[hyrox](hyrox/)** | **Official Hyrox 8-station fitness race AI referee and kinematic performance analytics (No-Rep detection, rep counts, cadences, and fatigue assessment).** | `COCO-17 Kinematics` + `Hyrox Rulebook State Machine` |
 | **[dance_sync](dance_sync/)** | Compares dancers' sync performing the same choreography and computes a similarity metric. | [`vitpose-plus-large`](https://docs.vlm.run/gateway/models/usyd-community-vitpose-plus-large) |
 | **[chin_ups](chin_ups/)** | Counts chin-up reps from a clip and times the ascent and descent of each one. | [`vitpose-plus-large`](https://docs.vlm.run/gateway/models/usyd-community-vitpose-plus-large) |
 | **[rock_climbing](rock_climbing/)** | Segments bouldering holds, returns which holds the climber used and in what order, and compares attempts at the same route. | [`sam3.1`](https://docs.vlm.run/gateway/models/facebook-sam3.1) + [`vitpose-plus-large`](https://docs.vlm.run/gateway/models/usyd-community-vitpose-plus-large) |

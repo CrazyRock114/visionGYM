@@ -46,17 +46,17 @@ def rel(path: Path) -> Path:
 def main() -> int:
     t_start = time.perf_counter()
     console.print()
-    console.rule("[bold]ViTPose: chin-ups[/]", align="center")
+    console.rule("[bold]ViTPose: 引体向上姿态与动作分析[/]", align="center")
 
     # ── 1. Key ───────────────────────────────────────────────────────────────
-    rule(1, "API key")
+    rule(1, "API 密钥检测")
     api_key, source = load_api_key(cfg.PROJECT_DIR)
-    console.print(f"  loaded from [green]{source}[/] ([dim]…{api_key[-4:]}[/])")
+    console.print(f"  已从 [green]{source}[/] 加载 ([dim]…{api_key[-4:]}[/])")
 
     # ── 2. Source ────────────────────────────────────────────────────────────
-    rule(2, "Source video")
+    rule(2, "源视频检测")
     if not cfg.INPUT_VIDEO.is_file():
-        console.print(f"[red]Not found:[/] {cfg.INPUT_VIDEO}")
+        console.print(f"[red]未找到视频文件:[/] {cfg.INPUT_VIDEO}")
         return 1
 
     src_info = video.probe_source(cfg.INPUT_VIDEO)
@@ -72,7 +72,7 @@ def main() -> int:
     })
 
     # ── 3. Convert (cached) ──────────────────────────────────────────────────
-    rule(3, "Convert to MP4")
+    rule(3, "视频格式转码 (MP4)")
 
     def prepare(height, label):
         """Convert to *height* (None = source), reusing a cached copy if present."""
@@ -82,11 +82,11 @@ def main() -> int:
         )
         seconds, cached = 0.0, True
         if path.is_file() and not cfg.FORCE_RECONVERT:
-            console.print(f"  [green]cache hit[/] ({label}): [dim]{rel(path)}[/]")
+            console.print(f"  [green]命中缓存[/] ({label}): [dim]{rel(path)}[/]")
         else:
             cached = False
-            reason = "FORCE_RECONVERT" if path.is_file() else "no cached copy"
-            console.print(f"  [yellow]converting[/] ({label}, {reason})")
+            reason = "强制重新转码" if path.is_file() else "未发现缓存文件"
+            console.print(f"  [yellow]转码中[/] ({label}, 原因: {reason})")
             t0 = time.perf_counter()
             video.convert(
                 cfg.INPUT_VIDEO, path,
@@ -94,35 +94,35 @@ def main() -> int:
                 crf=cfg.CONVERT_CRF, total_frames=src_info["n_frames"], console=console,
             )
             seconds = time.perf_counter() - t0
-            console.print(f"  done in {seconds:.1f}s -> [dim]{rel(path)}[/]")
+            console.print(f"  转码完成，耗时 {seconds:.1f}s -> [dim]{rel(path)}[/]")
         return path, video.inspect(path), seconds, cached
 
     # Two renditions, because they answer to different limits: the model caps at
     # a 2048px long edge internally, so uploading more is pure wait, while the
     # export answers only to what you want to watch. Pose coordinates are
     # normalized, so one inference serves any render size.
-    mp4, info, convert_seconds, convert_cached = prepare(cfg.INFERENCE_HEIGHT, "inference")
+    mp4, info, convert_seconds, convert_cached = prepare(cfg.INFERENCE_HEIGHT, "推理用")
 
     if cfg.EXPORT_HEIGHT == cfg.INFERENCE_HEIGHT:
         export_mp4, export_info = mp4, info
     else:
-        export_mp4, export_info, extra_s, extra_cached = prepare(cfg.EXPORT_HEIGHT, "export")
+        export_mp4, export_info, extra_s, extra_cached = prepare(cfg.EXPORT_HEIGHT, "导出用")
         convert_seconds += extra_s
         convert_cached = convert_cached and extra_cached
         if export_info.n_frames != info.n_frames:
             console.print(
-                f"  [yellow]warning[/] frame counts differ "
-                f"({info.n_frames} inference vs {export_info.n_frames} export); "
-                "poses are matched by frame index, so the overlay may drift."
+                f"  [yellow]警告[/] 帧数不一致 "
+                f"({info.n_frames} 推理帧 vs {export_info.n_frames} 导出帧); "
+                "骨架覆盖可能出现微小偏差。"
             )
 
-    console.print(f"  inference [bold]{info}[/]  ({mp4.stat().st_size / 1e6:.1f} MB)")
+    console.print(f"  推理视频 [bold]{info}[/]  ({mp4.stat().st_size / 1e6:.1f} MB)")
     if export_mp4 is not mp4:
-        console.print(f"  export    [bold]{export_info}[/]  "
+        console.print(f"  导出视频 [bold]{export_info}[/]  "
                       f"({export_mp4.stat().st_size / 1e6:.1f} MB)")
 
     # ── 4. Request ───────────────────────────────────────────────────────────
-    rule(4, "Pose estimation")
+    rule(4, "人体姿态估计推理")
     video_b64, extra_body = pose.build_request(
         mp4,
         every_frame=cfg.EVERY_FRAME, fps=info.fps, n_frames=info.n_frames,
@@ -218,14 +218,14 @@ def main() -> int:
         )
 
     # ── 5. Output ────────────────────────────────────────────────────────────
-    rule(5, "Render")
+    rule(5, "视频与数据面板渲染")
     stamp = datetime.now().strftime(cfg.RUN_STAMP_FORMAT)
     run_dir = cfg.OUTPUT_DIR / stamp
     run_dir.mkdir(parents=True, exist_ok=True)
 
     poses_path = run_dir / "poses.json"
     poses_path.write_text(json.dumps(payload, indent=2))
-    console.print(f"  poses  -> [dim]{rel(poses_path)}[/] "
+    console.print(f"  姿态数据 -> [dim]{rel(poses_path)}[/] "
                   f"({poses_path.stat().st_size / 1e6:.1f} MB)")
 
     analysis = None
@@ -233,8 +233,8 @@ def main() -> int:
         analysis = reps.analyze(frames, info.fps, info.n_frames, cfg=cfg)
         if analysis.reps:
             table = Table(box=None, pad_edge=False)
-            for col in ("rep", "valley", "peak", "up", "moving", "down", "total"):
-                table.add_column(col, justify="right", style="dim" if col == "rep" else None)
+            for col in ("序号", "起始波谷", "达峰时刻", "向心耗时", "动作耗时", "离心耗时", "总耗时"):
+                table.add_column(col, justify="right", style="dim" if col == "序号" else None)
             for rep in analysis.reps:
                 table.add_row(
                     str(rep.number), f"{rep.valley_time:.2f}s", f"{rep.peak_time:.2f}s",
@@ -242,14 +242,13 @@ def main() -> int:
                     f"{rep.descent_seconds:.2f}s", f"{rep.total_seconds:.2f}s",
                 )
             console.print(Panel(table,
-                                title=f"[bold green]{analysis.count} reps[/] "
-                                      f"[dim](panel reports: {cfg.REP_METRIC})[/]",
+                                title=f"[bold green]累计检测到 {analysis.count} 次动作[/] "
+                                      f"[dim](面板展示指标: {cfg.REP_METRIC})[/]",
                                 title_align="left", expand=False))
         else:
-            console.print("  [yellow]no reps detected[/]. Check displacement.png")
+            console.print("  [yellow]未检测到完整动作[/]。请检查 displacement.png 曲线")
         if analysis.off_bar_frames:
-            console.print(f"  [dim]{analysis.off_bar_frames} frames excluded, "
-                          f"hands off the bar[/]")
+            console.print(f"  [dim]已排除 {analysis.off_bar_frames} 帧手脱离横杠的数据[/]")
 
     raw = run_dir / "_raw.mp4"
     t0 = time.perf_counter()
@@ -264,21 +263,21 @@ def main() -> int:
     video.encode_h264(raw, out_video, crf=cfg.OUTPUT_CRF)
     encode_seconds = time.perf_counter() - t0
     raw.unlink(missing_ok=True)   # MPEG-4 Part 2 intermediate; no player wants it
-    console.print(f"  video  -> [dim]{rel(out_video)}[/] "
+    console.print(f"  生成视频 -> [dim]{rel(out_video)}[/] "
                   f"({out_video.stat().st_size / 1e6:.1f} MB)")
 
     disp_path = None
     if analysis is not None:
         disp_path = run_dir / "displacement.png"
         # Same metric as the panel, or the two disagree about the same rep.
-        mean = (f", {np.mean([reps.rep_value(r, cfg.REP_METRIC) for r in analysis.reps]):.2f}s mean"
+        mean = (f", 平均 {np.mean([reps.rep_value(r, cfg.REP_METRIC) for r in analysis.reps]):.2f}s"
                 if analysis.reps else "")
         render.plot_displacement(
             analysis, disp_path, cfg=cfg,
-            title=f"Vertical displacement: {analysis.count} reps{mean} "
+            title=f"垂直位移曲线: {analysis.count} 次动作{mean} "
                   f"· {reps.phase_label(cfg.REP_METRIC)}",
         )
-        console.print(f"  graph  -> [dim]{rel(disp_path)}[/]")
+        console.print(f"  位移图表 -> [dim]{rel(disp_path)}[/]")
 
         reps_path = run_dir / "reps.json"
         reps_path.write_text(json.dumps({
@@ -287,25 +286,25 @@ def main() -> int:
             **analysis.summary(),
             "series": analysis.series(),
         }, indent=2))
-        console.print(f"  reps   -> [dim]{rel(reps_path)}[/]")
+        console.print(f"  动作数据 -> [dim]{rel(reps_path)}[/]")
 
         summary_path = run_dir / "summary.txt"
         summary_path.write_text(reps.summary_text(
             analysis, video_seconds=info.duration, source=cfg.INPUT_VIDEO.name,
             metric=cfg.REP_METRIC))
-        console.print(f"  summary-> [dim]{rel(summary_path)}[/]")
+        console.print(f"  文本摘要 -> [dim]{rel(summary_path)}[/]")
 
     plot_path = None
     if cfg.SAVE_JOINT_PLOT:
         plot_path = run_dir / f"{cfg.PLOT_JOINT}.png"
         if render.plot_joint(frames, info.fps, cfg.PLOT_JOINT, plot_path):
-            console.print(f"  plot   -> [dim]{rel(plot_path)}[/]")
+            console.print(f"  关节点图 -> [dim]{rel(plot_path)}[/]")
         else:
-            console.print(f"  [yellow]plot skipped[/]: {cfg.PLOT_JOINT} never visible")
+            console.print(f"  [yellow]跳过关节点图[/]: {cfg.PLOT_JOINT} 未被检测到")
             plot_path = None
 
     # ── 6. Metrics ───────────────────────────────────────────────────────────
-    rule(6, "Performance")
+    rule(6, "运行性能统计")
     total = time.perf_counter() - t_start
     metrics = timing.Metrics(
         frames=len(frames),

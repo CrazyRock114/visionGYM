@@ -213,6 +213,9 @@ def plot_clearance(analysis, dst: Path, *, cfg, title: str = "") -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    plt.rcParams['font.sans-serif'] = ['STHeiti', 'PingFang SC', 'Heiti SC', 'Arial Unicode MS', 'SimHei', 'Noto Sans CJK SC', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
+
     t = analysis.times
     fig, (ax, ax2) = plt.subplots(
         2, 1, figsize=(14, 7.5), sharex=True,

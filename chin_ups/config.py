@@ -83,10 +83,10 @@ PANEL_NOTE_SIZE = 30           # the closing note
 PANEL_HEADER_LINE_GAP = 0.85   # line spacing, as a multiple of the font size
 PANEL_NOTE_LINE_GAP = 0.85
 
-REP_LABEL = "Chin-ups"
-PANEL_GRAPH_TITLE = "Rep Duration (s)"
-PANEL_AVG_LABEL = "Avg Duration"
-PANEL_Y_LABEL = "Duration (s)"
+REP_LABEL = "引体向上"
+PANEL_GRAPH_TITLE = "单次动作耗时 (秒)"
+PANEL_AVG_LABEL = "平均耗时"
+PANEL_Y_LABEL = "耗时 (秒)"
 
 PANEL_FONT = "auto"        # "auto", "opencv" to force Hershey, or a font path
 PANEL_FONT_INDEX = None    # face index inside a .ttc; None uses the default
