@@ -2,7 +2,7 @@
 
 Real-world computer vision demos.
 
-> **[📖 简体中文文档与 HYROX 体能赛事优化指南 (Chinese Documentation)](README_CN.md)**
+> **🌐 [在线交互式控制台 / Live Vercel Demo](https://vision-gym-seven.vercel.app)** &nbsp;|&nbsp; **[📖 简体中文文档与 HYROX 体能赛事优化指南](README_CN.md)**
 
 | Project | What it does | Key model |
 |---|---|---|

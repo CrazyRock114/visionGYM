@@ -2,6 +2,9 @@
 
 本项目基于 [jeremyipark/vision-demos](https://github.com/jeremyipark/vision-demos) 进行全面中文汉化、跨平台中文字体自适应渲染支持，并全新扩展构建了针对 **HYROX 全球体能耐力锦标赛全套 8 项功能性专项运动 + 跑步区间** 的专业级计算机视觉裁判与动作动力学分析套件。
 
+> 🌐 **在线交互控制台 (Live Vercel Demo)**: [https://vision-gym-seven.vercel.app](https://vision-gym-seven.vercel.app)  
+> 📦 **GitHub 官方开源仓库**: [https://github.com/CrazyRock114/visionGYM](https://github.com/CrazyRock114/visionGYM)
+
 ---
 
 ## 目录
