@@ -30,3 +30,4 @@ venv/
 # ── Project data output ───────────────────────────────────────────────────────
 **/data/output/
 hyrox/data/output/
+.vercel
