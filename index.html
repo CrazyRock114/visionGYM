@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>visionGYM | 计算机视觉体能与 HYROX 官方赛事 AI 裁判系统</title>
   <meta name="description" content="基于高精度人体关键点骨骼估计与生物力学动力学状态机，针对 HYROX 全套 8 项功能性专项运动 + 跑步区间提供全自动化裁判执裁、动作计数、周期分解与 No-Rep 违规判定。">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #0a0d14;
@@ -25,9 +22,9 @@
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
       --text-muted: #64748b;
-      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-display: 'Chakra Petch', sans-serif;
-      --font-mono: 'JetBrains Mono', SFMono-Regular, Consolas, monospace;
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-display: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Arial Black", Impact, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --radius-sm: 6px;
       --radius-md: 10px;
       --radius-lg: 16px;
@@ -42,8 +39,10 @@
     }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-primary);
+      background-color: #0a0d14;
+      background-color: var(--bg-dark, #0a0d14);
+      color: #f8fafc;
+      color: var(--text-primary, #f8fafc);
       font-family: var(--font-main);
       line-height: 1.6;
       overflow-x: hidden;
@@ -52,14 +51,12 @@
 
     /* Background aesthetic glow */
     .ambient-glow {
-      position: fixed;
+      position: absolute;
       top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100vw;
-      max-width: 1440px;
-      height: 600px;
-      background: radial-gradient(circle at 50% -20%, rgba(255, 215, 0, 0.08) 0%, rgba(56, 189, 248, 0.04) 40%, transparent 70%);
+      left: 0;
+      right: 0;
+      height: 500px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(255, 215, 0, 0.08) 0%, rgba(56, 189, 248, 0.03) 40%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -68,9 +65,10 @@
       position: sticky;
       top: 0;
       z-index: 50;
+      background-color: #0d121c;
+      background-color: rgba(13, 18, 28, 0.95);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      background-color: rgba(10, 13, 20, 0.85);
       border-bottom: 1px solid var(--border-subtle);
     }
 
@@ -199,8 +197,10 @@
     }
 
     .hero h1 .highlight {
+      color: #ffd700;
       background: linear-gradient(90deg, #ffd700, #ffb700, #38bdf8);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -1344,10 +1344,19 @@ python hyrox/main.py --test-all
 
     // Setup Canvas Scale
     function resizeCanvas() {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      const container = canvas.parentElement;
+      const rect = container ? container.getBoundingClientRect() : canvas.getBoundingClientRect();
+      const w = Math.floor(rect.width) || 640;
+      const h = Math.floor(rect.height) || 380;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      if (ctx.resetTransform) {
+        ctx.resetTransform();
+      } else {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+      }
+      ctx.scale(dpr, dpr);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -1355,6 +1364,7 @@ python hyrox/main.py --test-all
     // Render Waterfall Bars
     function updateWaterfall() {
       const data = STATIONS[currentStationKey];
+      if (!data) return;
       waterfallBars.innerHTML = '';
       data.durations.forEach((d, i) => {
         const bar = document.createElement('div');
@@ -1369,6 +1379,7 @@ python hyrox/main.py --test-all
 
     // Switch Station
     function setStation(key) {
+      if (!STATIONS[key]) return;
       currentStationKey = key;
       const data = STATIONS[key];
       titleEl.innerText = data.title;
@@ -1377,7 +1388,7 @@ python hyrox/main.py --test-all
       ruleViolationEl.innerText = data.violation;
 
       const total = data.validCount + data.violationCount;
-      const rate = ((data.validCount / total) * 100).toFixed(1);
+      const rate = total > 0 ? ((data.validCount / total) * 100).toFixed(1) : '100.0';
       statValidEl.innerText = data.validCount;
       statViolationEl.innerText = data.violationCount;
       statPassRateEl.innerText = `${rate}%`;
@@ -1401,21 +1412,26 @@ python hyrox/main.py --test-all
     const btnValid = document.getElementById('btnModeValid');
     const btnViolation = document.getElementById('btnModeViolation');
 
-    btnValid.addEventListener('click', () => {
-      isViolationMode = false;
-      btnValid.classList.add('active');
-      btnViolation.classList.remove('active');
-      updateBanner();
-    });
+    if (btnValid) {
+      btnValid.addEventListener('click', () => {
+        isViolationMode = false;
+        btnValid.classList.add('active');
+        if (btnViolation) btnViolation.classList.remove('active');
+        updateBanner();
+      });
+    }
 
-    btnViolation.addEventListener('click', () => {
-      isViolationMode = true;
-      btnViolation.classList.add('active');
-      btnValid.classList.remove('active');
-      updateBanner();
-    });
+    if (btnViolation) {
+      btnViolation.addEventListener('click', () => {
+        isViolationMode = true;
+        btnViolation.classList.add('active');
+        if (btnValid) btnValid.classList.remove('active');
+        updateBanner();
+      });
+    }
 
     function updateBanner() {
+      if (!refereeBanner || !bannerStatus || !bannerDetail) return;
       if (!isViolationMode) {
         refereeBanner.className = 'referee-banner status-valid';
         bannerStatus.innerText = `[合规 REP] 动作标准达标`;
@@ -1439,19 +1455,25 @@ python hyrox/main.py --test-all
     }
 
     // Controls
-    document.getElementById('btnPlayPause').addEventListener('click', () => {
-      isPlaying = !isPlaying;
-    });
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    if (btnPlayPause) {
+      btnPlayPause.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+      });
+    }
 
-    document.getElementById('btnReset').addEventListener('click', () => {
-      animFrame = 0;
-    });
+    const btnReset = document.getElementById('btnReset');
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        animFrame = 0;
+      });
+    }
 
     // Kinematic Skeleton Drawer
     function drawSkeleton() {
-      const rect = canvas.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
+      const container = canvas.parentElement;
+      const W = container ? (container.clientWidth || 640) : 640;
+      const H = container ? (container.clientHeight || 380) : 380;
 
       ctx.clearRect(0, 0, W, H);
 
@@ -2023,9 +2045,22 @@ python hyrox/main.py --test-all
       });
     }
 
-    // Initialize
-    setStation('8_wall_balls');
-    drawSkeleton();
+    // Initialize safely
+    function init() {
+      try {
+        resizeCanvas();
+        setStation('8_wall_balls');
+        drawSkeleton();
+      } catch (err) {
+        console.error('Simulation init error:', err);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
