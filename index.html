@@ -1593,11 +1593,386 @@ python hyrox/main.py --test-all
           ctx.fillText(isViolationMode ? '双脚离地差: 140ms' : '双脚同步起跳: 18ms', centerX + 10, groundY - 100 - jumpH);
         }
 
-      } else {
-        // Generic athletic pose
-        const hipY = groundY - 130 + phase * 20;
+      } else if (currentStationKey === '1_skierg') {
+        // Station 1: SkiErg (滑雪机) - 垂直机架、缆绳滑轮、过头引手与深度屈髋下压
+        // 绘制 SkiErg 垂直立柱与滑轮
+        const frameX = centerX + 55;
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(frameX, groundY);
+        ctx.lineTo(frameX, 35);
+        ctx.lineTo(frameX - 45, 35);
+        ctx.stroke();
+
+        // 顶部滑轮
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(frameX - 45, 35, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 冲程动力学计算
+        const skiergPull = isViolationMode ? (phase * 0.42) : phase;
+        // 站立高位双手过头顶 (38px)，下拉深度超过髋部 (groundY - 50)
+        const handY = 45 + skiergPull * (groundY - 110);
+        const handX = centerX + 5 - skiergPull * 25;
+
+        // 缆绳
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(frameX - 45, 35);
+        ctx.lineTo(handX, handY);
+        ctx.stroke();
+
+        // 屈髋与躯干前倾
+        const hinge = skiergPull;
+        const hipX = centerX - 15 - hinge * 35;
+        const hipY = groundY - 125 + hinge * 20;
+        const shoulderX = centerX + 5 - hinge * 15;
+        const shoulderY = hipY - 60 + hinge * 25;
+        const headY = shoulderY - 22;
+        const kneeX = centerX - 10 - hinge * 15;
+        const kneeY = groundY - 60 + hinge * 10;
+        const ankleX = centerX - 10;
+
+        // 绘制人体骨骼
+        drawBone(shoulderX, headY, shoulderX, shoulderY); // 头
+        drawBone(shoulderX, shoulderY, hipX, hipY); // 躯干
+        drawBone(shoulderX, shoulderY, handX, handY); // 手臂
+        drawBone(hipX, hipY, kneeX, kneeY); // 大腿
+        drawBone(kneeX, kneeY, ankleX, groundY); // 小腿
+
+        // 滑雪手柄
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(handX - 4, handY - 4, 8, 8);
+
+        // 实时裁判指标文字
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        if (isViolationMode) {
+          ctx.fillText('[警示: 冲程过短] 手臂未过头顶 (浅拉) · 缺乏核心屈髋', centerX - 80, 25);
+        } else {
+          ctx.fillText('[冲程深度达标] 屈髋冲程比 1.9 · 过头高位引手', centerX - 70, 25);
+        }
+
+      } else if (currentStationKey === '2_sled_push') {
+        // Station 2: Sled Push (雪橇推) - 45° 动力推进线、双手推把手、高频活塞蹬步
+        const sledBaseX = centerX + 60;
+        // 绘制雪橇金属滑轨底座与负重铁片
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(sledBaseX, groundY - 4);
+        ctx.lineTo(sledBaseX + 80, groundY - 4);
+        ctx.lineTo(sledBaseX + 90, groundY - 18);
+        ctx.stroke();
+
+        // 垂直推杆
+        const poleX = sledBaseX + 15;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(poleX, groundY - 4);
+        ctx.lineTo(poleX, groundY - 130);
+        ctx.stroke();
+
+        // 负重铁片堆叠
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(sledBaseX + 35, groundY - 45, 30, 40);
+
+        // 动力角：正常 44°，违规 68° (站太直)
+        const driveDeg = isViolationMode ? 68 : 44;
+        const stepCycle = animFrame * 4.5;
+        const legT = Math.sin(stepCycle);
+
+        const handX = poleX;
+        const handY = groundY - 105;
+
+        // 根据角度计算肩与髋
+        const rad = (driveDeg * Math.PI) / 180;
+        const shoulderX = handX - 45;
+        const shoulderY = handY + 10;
+        const hipX = shoulderX - Math.cos(rad) * 65;
+        const hipY = shoulderY + Math.sin(rad) * 65;
+
+        // 活塞式蹬步双腿
+        const frontKneeX = hipX + 30 + legT * 20;
+        const frontKneeY = groundY - 45 - Math.max(0, legT) * 35;
+        const frontFootX = frontKneeX + 5;
+        const frontFootY = groundY - Math.max(0, legT) * 20;
+
+        const rearKneeX = hipX - 25 - legT * 15;
+        const rearKneeY = groundY - 40 - Math.max(0, -legT) * 25;
+        const rearFootX = hipX - 55 - legT * 20;
+        const rearFootY = groundY;
+
+        // 绘制骨架
+        drawBone(shoulderX, shoulderY - 20, shoulderX, shoulderY); // 头
+        drawBone(shoulderX, shoulderY, hipX, hipY); // 躯干动力线
+        drawBone(shoulderX, shoulderY, handX, handY); // 手臂紧推把手
+        drawBone(hipX, hipY, frontKneeX, frontKneeY); // 前腿
+        drawBone(frontKneeX, frontKneeY, frontFootX, frontFootY);
+        drawBone(hipX, hipY, rearKneeX, rearKneeY); // 后蹬腿
+        drawBone(rearKneeX, rearKneeY, rearFootX, rearFootY);
+
+        // 实时动力角标注
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        const msg = isViolationMode ? `[警示: 躯干过直] 驱动角 ${driveDeg}° > 52° · 动力线断裂` : `[动力倾角 ${driveDeg}°] 40°-50° 理想推进力线 · 75 SPM`;
+        ctx.fillText(msg, centerX - 90, 25);
+
+      } else if (currentStationKey === '3_sled_pull') {
+        // Station 3: Sled Pull (雪橇拉) - 低重心抗阻后倾坐姿、双手交替倒拉绳索、后退步频
+        // 绘制竞技场地限制线 (Pull Box Line)
+        const lineX = centerX + 45;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(lineX, groundY);
+        ctx.lineTo(lineX, groundY - 80);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '9px JetBrains Mono';
+        ctx.fillText('竞赛限制线', lineX - 22, groundY - 85);
+
+        // 低重心后仰坐姿
+        const pullT = Math.sin(animFrame * 3.5);
+        const lowSquat = isViolationMode ? 0.3 : 0.85; // 违规时不沉低重心
+        const hipX = centerX - 30;
+        const hipY = groundY - 75 - (1 - lowSquat) * 45;
+        const shoulderX = hipX - 25 * lowSquat;
+        const shoulderY = hipY - 55;
+
+        // 双手交替倒拉绳索
+        const arm1X = centerX + 20 + pullT * 35;
+        const arm1Y = shoulderY + 15;
+        const arm2X = centerX + 20 - pullT * 35;
+        const arm2Y = shoulderY + 20;
+
+        // 粗绳索一直延伸向远方雪橇
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(W - 10, groundY - 30);
+        ctx.lineTo(Math.max(arm1X, arm2X), arm1Y);
+        ctx.stroke();
+
+        // 双腿抗阻深屈膝
+        const kneeX = hipX + 30;
+        const kneeY = groundY - 45;
+        const foot1X = kneeX + 15;
+        const foot2X = kneeX - 15;
+
+        drawBone(shoulderX, shoulderY - 20, shoulderX, shoulderY); // 头
+        drawBone(shoulderX, shoulderY, hipX, hipY); // 躯干
+        drawBone(shoulderX, shoulderY, arm1X, arm1Y); // 左手拉绳
+        drawBone(shoulderX, shoulderY, arm2X, arm2Y); // 右手拉绳
+        drawBone(hipX, hipY, kneeX, kneeY); // 屈膝
+        drawBone(kneeX, kneeY, foot1X, groundY); // 支撑脚 1
+        drawBone(kneeX, kneeY, foot2X, groundY); // 支撑脚 2
+
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        const pullMsg = isViolationMode ? '[警示: 重心过高] 身体未有效后仰抗阻 · 倒拉断节' : '[低重心抗阻稳定] 后倾抗阻角 65° · 双手连贯倒拉';
+        ctx.fillText(pullMsg, centerX - 80, 25);
+
+      } else if (currentStationKey === '5_rowing') {
+        // Station 5: Rowing (划船机) - 真实水平坐姿滑轨、飞轮、抓水 -> 驱动蹬腿 -> 12°出水后仰 -> 恢复
+        const railY = groundY - 25;
+        const frontX = centerX + 110;
+        const backX = centerX - 100;
+
+        // 绘制划船机滑轨与前机身飞轮
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(backX, railY);
+        ctx.lineTo(frontX, railY);
+        ctx.stroke();
+
+        // 飞轮机头
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(frontX + 15, railY - 25, 26, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 固定脚踏板
+        const footX = frontX - 35;
+        const footY = railY - 15;
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(footX - 8, footY - 15, 16, 25);
+
+        // 划船冲程动力学 (抓水 -> 蹬腿伸展)
+        const rowPhase = (Math.sin(animFrame * 2.2) + 1) / 2; // 0: Catch, 1: Finish
+        const seatTravel = 95;
+        const seatX = footX - 45 - rowPhase * seatTravel;
+        const seatY = railY - 8;
+
+        // 滑座
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(seatX - 12, seatY - 6, 24, 8);
+
+        // 躯干出水后仰角: 抓水前倾 15°，出水后仰 (正常 12°，违规 32° 过度后仰)
+        const laybackDeg = isViolationMode ? 32 : 12.5;
+        const torsoAngleRad = ((-15 + rowPhase * (15 + laybackDeg)) * Math.PI) / 180;
+
+        const hipX = seatX;
+        const hipY = seatY - 10;
+        const torsoLen = 60;
+        const shoulderX = hipX - Math.sin(torsoAngleRad) * torsoLen;
+        const shoulderY = hipY - Math.cos(torsoAngleRad) * torsoLen;
+        const headY = shoulderY - 20;
+
+        // 腿部屈伸：抓水屈膝膝盖抬高，出水蹬直膝盖落平
+        const kneeX = (hipX + footX) / 2;
+        const kneeY = footY - (1 - rowPhase) * 45;
+
+        // 划船拉杆手柄与链条
+        const handleX = shoulderX + (1 - rowPhase) * 35 + 10;
+        const handleY = shoulderY + 22;
+
+        // 链条从飞轮连到把手
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(frontX, railY - 25);
+        ctx.lineTo(handleX, handleY);
+        ctx.stroke();
+
+        // 绘制划船人体骨架
+        drawBone(shoulderX, headY, shoulderX, shoulderY); // 头
+        drawBone(shoulderX, shoulderY, hipX, hipY); // 躯干
+        drawBone(shoulderX, shoulderY, handleX, handleY); // 手臂拉桨
+        drawBone(hipX, hipY, kneeX, kneeY); // 大腿
+        drawBone(kneeX, kneeY, footX, footY); // 小腿固定踏板
+
+        // 实时出水后仰标注
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        const rowMsg = isViolationMode ? `[警示: 过度后仰] 出水后仰角 ${laybackDeg}° > 15° · 核心弓背偷力` : `[四阶段时序合规] 出水后仰 ${laybackDeg}° (理想 10°-15°) · 腿-髋-臂发力标准`;
+        ctx.fillText(rowMsg, centerX - 90, 25);
+
+      } else if (currentStationKey === '6_farmers_carry') {
+        // Station 6: Farmers Carry (农夫行走) - 负重哑铃/壶铃在体侧、躯干直立大步走、侧倾检测
+        const walkCycle = animFrame * 3.2;
+        const stride = Math.sin(walkCycle);
+
+        // 侧倾角计算：正常 1.6°，违规 6.8° (摇摆失稳溜肩)
+        const swayDeg = isViolationMode ? (Math.sin(walkCycle * 0.8) * 6.8) : (Math.sin(walkCycle) * 1.6);
+        const swayPx = swayDeg * 3.5;
+        const shoulderDrop = isViolationMode ? 14 : 0;
+
+        const hipX = centerX;
+        const hipY = groundY - 110;
+        const shoulderX = hipX + swayPx;
         const shoulderY = hipY - 65;
-        drawPerson(centerX, shoulderY - 20, shoulderY, hipY, centerX + 15, groundY - 65, centerX, groundY);
+        const headY = shoulderY - 22;
+
+        // 左右腿交替向前与后迈
+        const lFootX = centerX + 20 + stride * 30;
+        const rFootX = centerX - 20 - stride * 30;
+        const lLift = Math.max(0, stride) * 18;
+        const rLift = Math.max(0, -stride) * 18;
+
+        const lKneeX = (hipX + lFootX) / 2 + 5;
+        const lKneeY = groundY - 55 - lLift * 0.6;
+        const rKneeX = (hipX + rFootX) / 2 - 5;
+        const rKneeY = groundY - 55 - rLift * 0.6;
+
+        // 双手持重壶铃在体侧
+        const lHandX = shoulderX - 25;
+        const lHandY = hipY + 10 + shoulderDrop;
+        const rHandX = shoulderX + 25;
+        const rHandY = hipY + 10 - shoulderDrop;
+
+        // 绘制中立位虚线辅助线 (垂直铅垂线)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(centerX, groundY);
+        ctx.lineTo(centerX, groundY - 190);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 绘制骨架
+        drawBone(shoulderX, headY, shoulderX, shoulderY); // 头
+        drawBone(shoulderX, shoulderY, hipX, hipY); // 躯干
+        drawBone(shoulderX, shoulderY, lHandX, lHandY); // 左臂持重
+        drawBone(shoulderX, shoulderY, rHandX, rHandY); // 右臂持重
+        drawBone(hipX, hipY, lKneeX, lKneeY); // 左腿
+        drawBone(lKneeX, lKneeY, lFootX, groundY - lLift);
+        drawBone(hipX, hipY, rKneeX, rKneeY); // 右腿
+        drawBone(rKneeX, rKneeY, rFootX, groundY - rLift);
+
+        // 绘制左右双手提着的沉重竞赛壶铃
+        function drawKettlebell(x, y) {
+          ctx.fillStyle = '#ffd700';
+          ctx.beginPath();
+          ctx.arc(x, y + 16, 12, 0, Math.PI * 2);
+          ctx.fill();
+          // 手柄
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(x - 6, y, 12, 10);
+        }
+        drawKettlebell(lHandX, lHandY);
+        drawKettlebell(rHandX, rHandY);
+
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        const swayMsg = isViolationMode ? `[警示: 核心疲劳侧倾] 侧倾 ${Math.abs(swayDeg).toFixed(1)}° > 4.5° · 右肩单侧下塌` : `[核心中立平衡] 侧倾 ${Math.abs(swayDeg).toFixed(1)}° (稳定) · 96 SPM 步频稳定`;
+        ctx.fillText(swayMsg, centerX - 85, 25);
+
+      } else {
+        // Hyrox Running (8x1km 跑步区间) - 真实跑步动力学：前倾角、高抬膝、摆臂对向、真正滞空相
+        const runCycle = animFrame * 3.6;
+        const runT = Math.sin(runCycle);
+        // 滞空相：脚离地时身体垂直跃升
+        const flightLift = Math.abs(Math.cos(runCycle)) * (isViolationMode ? 4 : 22);
+
+        const hipX = centerX;
+        const hipY = groundY - 125 - flightLift;
+        const shoulderX = hipX + 15; // 7° 前倾角
+        const shoulderY = hipY - 60;
+        const headY = shoulderY - 22;
+
+        // 跑步左右对向大摆臂
+        const lHandX = shoulderX - runT * 30;
+        const lHandY = shoulderY + 20 + runT * 15;
+        const rHandX = shoulderX + runT * 30;
+        const rHandY = shoulderY + 20 - runT * 15;
+
+        // 腿部活塞摆动与折叠后蹬
+        const frontLeg = runT;
+        const lKneeX = hipX + 25 + frontLeg * 25;
+        const lKneeY = groundY - 50 - flightLift - Math.max(0, frontLeg) * 35;
+        const lFootX = lKneeX + (frontLeg > 0 ? 10 : -20);
+        const lFootY = groundY - flightLift - Math.max(0, frontLeg) * 20;
+
+        const rKneeX = hipX + 25 - frontLeg * 25;
+        const rKneeY = groundY - 50 - flightLift - Math.max(0, -frontLeg) * 35;
+        const rFootX = rKneeX + (frontLeg < 0 ? 10 : -20);
+        const rFootY = groundY - flightLift - Math.max(0, -frontLeg) * 20;
+
+        drawBone(shoulderX, headY, shoulderX, shoulderY); // 头
+        drawBone(shoulderX, shoulderY, hipX, hipY); // 躯干
+        drawBone(shoulderX, shoulderY, lHandX, lHandY); // 摆臂
+        drawBone(shoulderX, shoulderY, rHandX, rHandY);
+        drawBone(hipX, hipY, lKneeX, lKneeY); // 前迈腿
+        drawBone(lKneeX, lKneeY, lFootX, lFootY);
+        drawBone(hipX, hipY, rKneeX, rKneeY); // 后蹬腿
+        drawBone(rKneeX, rKneeY, rFootX, rFootY);
+
+        ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
+        ctx.font = '10px JetBrains Mono';
+        const runMsg = isViolationMode ? '[警示: 步频疲劳暴跌] 步频 142 SPM · 滞空严重不足 (触地拖沓)' : '[高强度竞技步态] 步频 178 SPM · 触地时间 210ms · 左右对称 95%';
+        ctx.fillText(runMsg, centerX - 85, 25);
       }
 
       requestAnimationFrame(drawSkeleton);
