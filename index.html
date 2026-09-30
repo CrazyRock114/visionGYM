@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>visionGYM | 计算机视觉体能与 HYROX 官方赛事 AI 裁判系统</title>
   <meta name="description" content="基于高精度人体关键点骨骼估计与生物力学动力学状态机，针对 HYROX 全套 8 项功能性专项运动 + 跑步区间提供全自动化裁判执裁、动作计数、周期分解与 No-Rep 违规判定。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%23ffd700%22/><text y=%2272%22 x=%2224%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22900%22 font-size=%2268%22 fill=%22%23000%22>V</text></svg>">
   <style>
     :root {
       --bg-dark: #0a0d14;
@@ -152,6 +153,19 @@
       border-color: var(--hyrox-yellow);
       background-color: var(--bg-card-hover);
       box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .nav-links a:not(.btn-github) {
+        display: none;
+      }
+      .brand-name {
+        font-size: 1.15rem;
+      }
+      .btn-github {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.8rem;
+      }
     }
 
     .hero {
@@ -473,6 +487,30 @@
     @keyframes pulseAlert {
       from { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
       to { transform: scale(1.01); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+    }
+
+    @media (max-width: 640px) {
+      .referee-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding: 0.5rem 0.75rem;
+      }
+      .referee-banner span#bannerDetail {
+        font-size: 0.75rem;
+      }
+      .canvas-container {
+        height: 320px;
+      }
+      .hero {
+        padding: 2.5rem 1rem 1.5rem;
+      }
+      .hero h1 {
+        font-size: 1.85rem;
+      }
+      .hero p {
+        font-size: 0.95rem;
+      }
     }
 
     .canvas-controls {
@@ -1217,6 +1255,10 @@ python hyrox/main.py --test-all
         official: '双臂充分过头展开，向下拉动冲程至髋部后方；保持三屈三伸（髋、膝、踝）同步发力，完整完成 1000m 冲程。',
         cv: '检测双腕垂直位移冲程深度、髋膝伸展屈曲角与躯干前倾时序，计算拉桨（Drive）与回桨（Recovery）时间比。',
         violation: '冲程过浅或未达过头预备即提早下压发力，将降低冲程做功效率并记录动作不达标。',
+        validStatus: '[合规 REP] 冲程深度达标',
+        validDetail: '双手充分高位过头 · 屈髋伸展冲程完全 · 桨频 38 SPM',
+        violationStatus: '[警示 NO-REP] 冲程过短 (浅拉)',
+        violationDetail: '双手未达过头预备 · 缺乏核心屈髋下压做功',
         unit: 'SPM 桨频',
         metricVal: '38 SPM',
         repName: '冲程',
@@ -1229,6 +1271,10 @@ python hyrox/main.py --test-all
         official: '双手握持把手，保持身体处于推进动力线，连续向前蹬步直至推完全程 50 米。',
         cv: '肩-髋-踝躯干驱动角持续计算（目标最佳推力角 40°-50°），跟踪下肢蹬踏步频与推进速度。',
         violation: '躯干角度过于直立（>65°）导致驱动力线断裂，或推进过程中发生持续卡顿失速（Stall）。',
+        validStatus: '[合规 REP] 44° 理想推进力线',
+        validDetail: '躯干前倾驱动角 44° (标准 40°-50°) · 连续蹬步无卡顿',
+        violationStatus: '[警示 NO-REP] 躯干过直 / 动力线断裂',
+        violationDetail: '驱动角 68° > 52° 临界 · 蹬步失速停顿',
         unit: '驱动角',
         metricVal: '44°',
         repName: '蹬步',
@@ -1241,6 +1287,10 @@ python hyrox/main.py --test-all
         official: '站立于指定方格内，低重心抗阻后拉绳索；禁止越过竞赛线，连续拽拉至雪橇触及线标。',
         cv: '检测身体重心高度波动、倒步步频与双臂后拉冲程节奏，分析抗阻拉拽下的下肢支撑稳定性。',
         violation: '重心失稳漂移、后撤拉拽停滞中断或动作节奏剧烈脱节。',
+        validStatus: '[合规 REP] 65° 低重心抗阻达标',
+        validDetail: '低位后仰抗阻 · 双手连贯倒拉粗绳 · 竞赛区未越界',
+        violationStatus: '[警示 NO-REP] 重心过高 / 倒步停滞',
+        violationDetail: '未有效沉低重心抗阻 · 后撤拉拽停滞中断',
         unit: '步频',
         metricVal: '52 SPM',
         repName: '后拉',
@@ -1253,6 +1303,10 @@ python hyrox/main.py --test-all
         official: '每次波比必须胸部完全贴地 (Chest to Deck)；起身向前跳远时必须双脚同时起跳，严禁单腿跨步！',
         cv: '1. 胸腔关键点与地面垂直距离极值检测；2. 双侧脚踝离地时间差 (Δt > 80ms 触发 No-Rep 判罚)。',
         violation: '胸部未完全触底，或双脚未能同步离地起跳（单腿跨步），主裁判将判处该次跳远无效 (No-Rep)！',
+        validStatus: '[合规 REP] 胸部贴地 & 双脚同步起跳',
+        validDetail: '胸部贴地 0cm (Deck touch) · 双脚起跳离差 18ms < 80ms',
+        violationStatus: '[警示 NO-REP] 单腿跨步违规 / 胸部悬空',
+        violationDetail: '双脚离地差 140ms > 80ms 限制 · 单腿跳远无效',
         unit: '起跳同步差',
         metricVal: '18 ms',
         repName: '波比跳',
@@ -1265,6 +1319,10 @@ python hyrox/main.py --test-all
         official: '标准发力次序：蹬腿 -> 伸髋 -> 拉臂；出水时刻躯干后倾 10°-15°，回桨反向复位。',
         cv: '膝关节伸展、双腕水平行程与出水后仰角 (Layback Angle) 状态机划分，计算实时桨频 SPM。',
         violation: '出水过度后仰或弓背代偿，回桨过早屈膝导致桨柄碰撞。',
+        validStatus: '[合规 REP] 四阶段发力时序合规',
+        validDetail: '出水后仰角 12.5° (标准 10°-15°) · 腿-髋-臂协调发力',
+        violationStatus: '[警示 NO-REP] 出水过度后仰代偿',
+        violationDetail: '出水后仰 32° > 15° · 核心弓背塌陷偷力',
         unit: '桨频 SPM',
         metricVal: '29 SPM',
         repName: '冲程',
@@ -1277,6 +1335,10 @@ python hyrox/main.py --test-all
         official: '双手持重物（男子 2x24kg / 女子 2x16kg）行进 200 米，保持躯干直立中立位，严禁中途扔壶。',
         cv: '左右肩高差、骨盆水平度与躯干侧倾角 (Lateral Sway) 标准差计算，监测负重步频与核心疲劳度。',
         violation: '核心力竭导致躯干剧烈侧倾摇晃或单侧溜肩代偿，失稳警告。',
+        validStatus: '[合规 REP] 核心中立平衡',
+        validDetail: '双侧躯干侧倾 1.6° < 3.0° · 步态平稳无溜肩',
+        violationStatus: '[警示 NO-REP] 核心力竭剧烈侧倾',
+        violationDetail: '侧倾波动 6.8° > 4.5° · 右肩单侧塌陷代偿',
         unit: '侧倾波动',
         metricVal: '2.1°',
         repName: '步态周期',
@@ -1289,6 +1351,10 @@ python hyrox/main.py --test-all
         official: '肩扛沙袋行进，每步后膝必须明确触地；迈入下一步前必须双腿完全站立直立锁膝锁髋。',
         cv: '后膝离地最低距离检测（触地标定），站立相双膝屈伸角度检测（直立锁紧角需达到 170° 以上）。',
         violation: '后膝未触地偷步，或站立时膝髋未锁紧即匆忙前迈，直接判定 No-Rep 无效并勒令退回重做！',
+        validStatus: '[合规 REP] 后膝触地 & 锁膝站立',
+        validDetail: '后膝轻触地面 (0cm) · 迈步前完全站立直立锁髋 (172° > 170°)',
+        violationStatus: '[警示 NO-REP] 后膝未触地 / 偷步',
+        violationDetail: '后膝离地高度 14cm · 未完全直立即匆忙迈步',
         unit: '触地判定',
         metricVal: '触地达标',
         repName: '弓步',
@@ -1301,6 +1367,10 @@ python hyrox/main.py --test-all
         official: '屈髋折痕必须明确低于膝盖骨上缘（大腿下破水平线）；站起时膝关节和髋关节完全锁死伸展，并将药球掷向目标靶标。',
         cv: '双侧髋部与膝盖 Y 坐标差判断深度，结合膝关节内角（需小于 95° 且 y_hip ≥ y_knee），站立相检测膝髋是否完全恢复 170° 以上锁定角。',
         violation: '深蹲深度未达折痕过膝标准，或站立起身时未伸展直立偷掷药球，将被直接判处 No-Rep 并不予计入官方成绩。',
+        validStatus: '[合规 REP] 深蹲深度破平行',
+        validDetail: '屈髋折痕低于膝盖上缘 (膝角 88° < 95°) · 3.05m 靶标命中',
+        violationStatus: '[警示 NO-REP] 深蹲深度不足 (浅蹲)',
+        violationDetail: '屈髋折痕未低于膝盖上缘 (当前膝角 104° > 95°)',
         unit: '深蹲角度',
         metricVal: '88°',
         repName: '药球掷高',
@@ -1313,6 +1383,10 @@ python hyrox/main.py --test-all
         official: '在 8 大力量站之间交替完成的 8 组 1km 衔接跑，要求保持体能配速节奏与步频稳定性。',
         cv: '脚踝垂直位移波形识别每步触地瞬间 (Foot Strike)，实时测算步频 SPM、触地时间 (GCT) 与左右对称性。',
         violation: '步频急剧跳水衰减（体能崩盘），或单侧支撑时间过长预警伤病风险。',
+        validStatus: '[合规 REP] 竞技步态节奏良好',
+        validDetail: '步频 178 SPM · 触地时间 210ms · 左右对称 95%',
+        violationStatus: '[警示 NO-REP] 步频跳水衰竭预警',
+        violationDetail: '步频降至 142 SPM · 滞空消失 · 触地拖沓代偿',
         unit: '跑步步频',
         metricVal: '174 SPM',
         repName: '步频',
@@ -1432,25 +1506,17 @@ python hyrox/main.py --test-all
 
     function updateBanner() {
       if (!refereeBanner || !bannerStatus || !bannerDetail) return;
+      const data = STATIONS[currentStationKey];
+      if (!data) return;
+
       if (!isViolationMode) {
         refereeBanner.className = 'referee-banner status-valid';
-        bannerStatus.innerText = `[合规 REP] 动作标准达标`;
-        bannerDetail.innerText = `动作位移与关节角度完全符合 HYROX 官方规则`;
+        bannerStatus.innerText = data.validStatus || '[合规 REP] 动作标准达标';
+        bannerDetail.innerText = data.validDetail || '动作位移与关节角度完全符合 HYROX 官方规则';
       } else {
         refereeBanner.className = 'referee-banner status-norep';
-        if (currentStationKey === '8_wall_balls') {
-          bannerStatus.innerText = `[警示 NO-REP] 深蹲深度不足`;
-          bannerDetail.innerText = `屈髋折痕未低于膝盖上缘 (当前膝角 104° > 95°)`;
-        } else if (currentStationKey === '7_lunges') {
-          bannerStatus.innerText = `[警示 NO-REP] 后膝未触地 / 未直立锁定`;
-          bannerDetail.innerText = `后膝离地高度 14cm，判定偷步`;
-        } else if (currentStationKey === '4_burpees') {
-          bannerStatus.innerText = `[警示 NO-REP] 单腿跨步违规`;
-          bannerDetail.innerText = `双脚起跳离地时差 140ms > 80ms 限制`;
-        } else {
-          bannerStatus.innerText = `[警示 NO-REP] 动力学不达标`;
-          bannerDetail.innerText = `躯干驱动角或动作行程未达竞赛规范`;
-        }
+        bannerStatus.innerText = data.violationStatus || '[警示 NO-REP] 动力学不达标';
+        bannerDetail.innerText = data.violationDetail || '躯干驱动角或动作行程未达竞赛规范';
       }
     }
 
@@ -1669,14 +1735,10 @@ python hyrox/main.py --test-all
         ctx.fillStyle = '#f59e0b';
         ctx.fillRect(handX - 4, handY - 4, 8, 8);
 
-        // 实时裁判指标文字
+        // 实时冲程标注
         ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
         ctx.font = '10px JetBrains Mono';
-        if (isViolationMode) {
-          ctx.fillText('[警示: 冲程过短] 手臂未过头顶 (浅拉) · 缺乏核心屈髋', centerX - 80, 25);
-        } else {
-          ctx.fillText('[冲程深度达标] 屈髋冲程比 1.9 · 过头高位引手', centerX - 70, 25);
-        }
+        ctx.fillText(isViolationMode ? '冲程: 浅拉未过头' : '冲程: 屈髋做功达标', centerX - 85, groundY - 120);
 
       } else if (currentStationKey === '2_sled_push') {
         // Station 2: Sled Push (雪橇推) - 45° 动力推进线、双手推把手、高频活塞蹬步
@@ -1741,8 +1803,7 @@ python hyrox/main.py --test-all
         // 实时动力角标注
         ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
         ctx.font = '10px JetBrains Mono';
-        const msg = isViolationMode ? `[警示: 躯干过直] 驱动角 ${driveDeg}° > 52° · 动力线断裂` : `[动力倾角 ${driveDeg}°] 40°-50° 理想推进力线 · 75 SPM`;
-        ctx.fillText(msg, centerX - 90, 25);
+        ctx.fillText(`驱动角: ${driveDeg}°`, hipX - 60, hipY - 10);
 
       } else if (currentStationKey === '3_sled_pull') {
         // Station 3: Sled Pull (雪橇拉) - 低重心抗阻后倾坐姿、双手交替倒拉绳索、后退步频
@@ -1798,8 +1859,7 @@ python hyrox/main.py --test-all
 
         ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
         ctx.font = '10px JetBrains Mono';
-        const pullMsg = isViolationMode ? '[警示: 重心过高] 身体未有效后仰抗阻 · 倒拉断节' : '[低重心抗阻稳定] 后倾抗阻角 65° · 双手连贯倒拉';
-        ctx.fillText(pullMsg, centerX - 80, 25);
+        ctx.fillText(isViolationMode ? '重心: 过高断节' : '后仰抗阻角: 65°', hipX - 70, hipY - 10);
 
       } else if (currentStationKey === '5_rowing') {
         // Station 5: Rowing (划船机) - 真实水平坐姿滑轨、飞轮、抓水 -> 驱动蹬腿 -> 12°出水后仰 -> 恢复
@@ -1877,8 +1937,7 @@ python hyrox/main.py --test-all
         // 实时出水后仰标注
         ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
         ctx.font = '10px JetBrains Mono';
-        const rowMsg = isViolationMode ? `[警示: 过度后仰] 出水后仰角 ${laybackDeg}° > 15° · 核心弓背偷力` : `[四阶段时序合规] 出水后仰 ${laybackDeg}° (理想 10°-15°) · 腿-髋-臂发力标准`;
-        ctx.fillText(rowMsg, centerX - 90, 25);
+        ctx.fillText(`出水仰角: ${laybackDeg}°`, shoulderX - 60, shoulderY - 10);
 
       } else if (currentStationKey === '6_farmers_carry') {
         // Station 6: Farmers Carry (农夫行走) - 负重哑铃/壶铃在体侧、躯干直立大步走、侧倾检测
@@ -1948,8 +2007,7 @@ python hyrox/main.py --test-all
 
         ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
         ctx.font = '10px JetBrains Mono';
-        const swayMsg = isViolationMode ? `[警示: 核心疲劳侧倾] 侧倾 ${Math.abs(swayDeg).toFixed(1)}° > 4.5° · 右肩单侧下塌` : `[核心中立平衡] 侧倾 ${Math.abs(swayDeg).toFixed(1)}° (稳定) · 96 SPM 步频稳定`;
-        ctx.fillText(swayMsg, centerX - 85, 25);
+        ctx.fillText(`侧倾: ${Math.abs(swayDeg).toFixed(1)}°`, centerX + 35, hipY - 20);
 
       } else {
         // Hyrox Running (8x1km 跑步区间) - 真实跑步动力学：前倾角、高抬膝、摆臂对向、真正滞空相
@@ -1993,8 +2051,7 @@ python hyrox/main.py --test-all
 
         ctx.fillStyle = isViolationMode ? '#ef4444' : '#22c55e';
         ctx.font = '10px JetBrains Mono';
-        const runMsg = isViolationMode ? '[警示: 步频疲劳暴跌] 步频 142 SPM · 滞空严重不足 (触地拖沓)' : '[高强度竞技步态] 步频 178 SPM · 触地时间 210ms · 左右对称 95%';
-        ctx.fillText(runMsg, centerX - 85, 25);
+        ctx.fillText(isViolationMode ? '步频: 142 SPM (衰退)' : '步频: 178 SPM', centerX + 40, hipY - 20);
       }
 
       requestAnimationFrame(drawSkeleton);
