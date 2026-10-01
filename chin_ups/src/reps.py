@@ -406,8 +406,8 @@ def summary_text(analysis: RepAnalysis, *, video_seconds: float, source: str = "
         f"{'mean descent':<22}{s['mean_descent_seconds']:.2f}s",
         f"{'mean full cycle':<22}{float(np.mean(totals)):.2f}s",
         f"{'time under tension':<22}{work:.2f}s of {video_seconds:.2f}s "
-        f"({work / video_seconds * 100:.0f}%)",
-        f"{'pace':<22}{analysis.count / video_seconds * 60:.1f} reps/min",
+        f"({(work / video_seconds * 100) if video_seconds > 0 else 0:.0f}%)",
+        f"{'pace':<22}{(analysis.count / video_seconds * 60) if video_seconds > 0 else 0.0:.1f} reps/min",
         "",
         "Per rep",
         "-" * 58,

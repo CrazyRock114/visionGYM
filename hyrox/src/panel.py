@@ -88,15 +88,17 @@ class HyroxPanelRenderer:
             sub_title = "实时推进频率"
             sub_val = f"{self.analysis.avg_cadence:.0f}"
             unit = "SPM"
+            sub_color = _rgb(self.cfg.PANEL_ACCENT)
         else:
             sub_title = "动作合规通过率"
             sub_val = f"{pass_pct:.0f}%"
             unit = f"无效: {total_count - valid_count}"
+            sub_color = _rgb(self.cfg.PANEL_WARNING) if pass_pct < 80.0 else _rgb(self.cfg.PANEL_ACCENT)
 
         draw(panel, sub_title, self.font, size=14,
              xy=(margin_x + card_w + 32, y + 16), color=_rgb(self.cfg.PANEL_MUTED))
         draw(panel, sub_val, self.font, size=42,
-             xy=(margin_x + card_w + 32, y + 44), color=_rgb(self.cfg.PANEL_ACCENT))
+             xy=(margin_x + card_w + 32, y + 44), color=sub_color)
         draw(panel, unit, self.font, size=13,
              xy=(margin_x + card_w + 32, y + 96), color=_rgb(self.cfg.PANEL_MUTED))
 

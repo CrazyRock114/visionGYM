@@ -93,9 +93,12 @@ def analyze_rowing(frames: list[dict], fps: float, n_frames: int, *,
                 recovery_time = (end_frame - finish_frame) / fps
 
                 layback_at_finish = laybacks[finish_frame] if finish_frame < len(laybacks) else 12.0
-                # 规则核查：后仰角过大或未充分后仰
-                layback_ok = 5.0 <= layback_at_finish <= 25.0
-                reason = ViolationType.NONE if layback_ok else "提示: 出水后仰角度偏离建议区间 (10°-15°)"
+                # 规则核查：后仰角过大或未充分后仰，以及抓水屈膝
+                layback_diff = abs(layback_at_finish - cfg.ROWING_LAYBACK_TARGET_DEG)
+                layback_ok = layback_diff <= 12.0
+                catch_knee = knee_angles[start_frame] if start_frame < len(knee_angles) else cfg.ROWING_CATCH_KNEE_ANGLE
+                catch_ok = catch_knee <= (cfg.ROWING_CATCH_KNEE_ANGLE + 35.0)
+                reason = ViolationType.NONE if (layback_ok and catch_ok) else "提示: 出水后仰角度偏离建议区间 (10°-15°)"
 
                 rep = RepResult(
                     number=rep_num,

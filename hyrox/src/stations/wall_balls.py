@@ -124,7 +124,7 @@ def analyze_wall_balls(frames: list[dict], fps: float, n_frames: int, *,
                 max_hip_y_in_rep = hip_y
                 knee_y_at_bottom = knee_y
                 bottom_frame = f
-            if ang > min_angle_in_rep + 12.0 and ang < 140.0:
+            if ang > min_angle_in_rep + 8.0 and ang < 165.0:
                 # 触底开始回升
                 state = 2
 
@@ -138,10 +138,16 @@ def analyze_wall_balls(frames: list[dict], fps: float, n_frames: int, *,
                 # 1. 深度评判：在图像归一化坐标系中，y 值越大位置越低。
                 # 髋折痕低于膝盖上缘 => max_hip_y_in_rep >= knee_y_at_bottom - 0.02
                 # 且膝关节最小角度需低于阈值 (如 95 度)
-                depth_passed = (min_angle_in_rep <= cfg.WALL_BALL_MIN_KNEE_ANGLE) or \
-                               (max_hip_y_in_rep >= knee_y_at_bottom - 0.015)
+                depth_ratio = (max_hip_y_in_rep / knee_y_at_bottom) if knee_y_at_bottom else 1.0
+                depth_passed = ((min_angle_in_rep <= cfg.WALL_BALL_MIN_KNEE_ANGLE) or
+                                (max_hip_y_in_rep >= knee_y_at_bottom - 0.015)) and \
+                               (depth_ratio >= cfg.WALL_BALL_SQUAT_DEPTH_RATIO - 0.08)
 
-                lockout_passed = ang >= cfg.WALL_BALL_LOCKOUT_KNEE_ANGLE - 8.0
+                lockout_passed = ang >= cfg.WALL_BALL_LOCKOUT_KNEE_ANGLE - 8.0 and \
+                                 ang >= cfg.WALL_BALL_LOCKOUT_HIP_ANGLE - 10.0
+                if cfg.WALL_BALL_BALL_THROW_GATE:
+                    # 药球推举出手机制核查门控
+                    pass
 
                 is_valid = depth_passed and lockout_passed
                 reason = ViolationType.NONE

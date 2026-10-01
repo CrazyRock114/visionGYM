@@ -83,8 +83,9 @@ def analyze_farmers_carry(frames: list[dict], fps: float, n_frames: int, *,
     spm = (steps / (analysis.duration / 60.0)) if analysis.duration > 0 else 0.0
     analysis.avg_cadence = spm
 
-    # 稳定性评级
-    is_stable = max_sway <= cfg.FARMERS_SWAY_MAX_DEG
+    # 稳定性评级与双肩不对称容差
+    posture_diff = sway_std * 0.01
+    is_stable = (max_sway <= cfg.FARMERS_SWAY_MAX_DEG) and (posture_diff <= cfg.FARMERS_POSTURE_TOLERANCE + 0.1)
     status_text = "核心稳定" if is_stable else ViolationType.POSTURE_SWAY
 
     analysis.extra_data = {

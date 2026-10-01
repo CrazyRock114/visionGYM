@@ -885,6 +885,8 @@
     .code-block code {
       display: block;
       line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     .code-comment {
@@ -1031,7 +1033,7 @@
           <div class="canvas-controls">
             <div class="playback-btns">
               <button class="btn-ctrl" id="btnPlayPause">暂停 / 播放</button>
-              <button class="btn-ctrl" id="btnReset">重置计数</button>
+              <button class="btn-ctrl" id="btnReset" title="重置骨骼模拟动画到起始帧">重置动画</button>
             </div>
             <div class="sim-hint">
               实时关键点追踪: 髋/膝/踝/肩 2D 角度计算
@@ -1043,11 +1045,11 @@
         <div class="specs-card">
           <div class="telemetry-row">
             <div class="stat-box">
-              <div class="stat-label">有效计数</div>
+              <div class="stat-label">有效计数 (示范)</div>
               <div class="stat-val" id="statValidCount">14</div>
             </div>
             <div class="stat-box">
-              <div class="stat-label">违规 (No-Rep)</div>
+              <div class="stat-label">违规 (示范)</div>
               <div class="stat-val" id="statViolationCount" style="color: var(--neon-red);">1</div>
             </div>
             <div class="stat-box">
@@ -1055,6 +1057,7 @@
               <div class="stat-val" id="statPassRate" style="color: var(--neon-green);">93.3%</div>
             </div>
           </div>
+          <div id="statRepMetric" style="margin-top: -0.5rem; font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted); text-align: right;">药球掷高 · 目标基准: 88° (深蹲角度)</div>
 
           <div class="rule-accordion">
             <div class="rule-block">
@@ -1220,7 +1223,7 @@ cd visionGYM
 
 <span class="code-comment"># 2. 创建并激活虚拟环境 (Python 3.10+)</span>
 uv venv && source .venv/bin/activate
-uv pip install -r chin_ups/requirements.txt -r running/requirements.txt
+uv pip install -r requirements.txt
 
 <span class="code-comment"># 3. 运行 Hyrox 药球模拟测试 (内置生物力学姿态流与违规注入)</span>
 python hyrox/main.py --station 8_wall_balls
@@ -1264,7 +1267,8 @@ python hyrox/main.py --test-all
         repName: '冲程',
         validCount: 32,
         violationCount: 2,
-        durations: [1.2, 1.3, 1.25, 1.8, 1.28, 1.32, 1.3, 1.29]
+        durations: [1.2, 1.3, 1.25, 2.8, 1.28, 1.32, 2.9, 1.29],
+        noRepIndices: [3, 6]
       },
       '2_sled_push': {
         title: 'Station 2: 50m Sled Push (雪橇推)',
@@ -1280,7 +1284,8 @@ python hyrox/main.py --test-all
         repName: '蹬步',
         validCount: 48,
         violationCount: 3,
-        durations: [0.8, 0.82, 0.85, 1.4, 0.88, 0.9, 0.92, 0.95]
+        durations: [0.8, 0.82, 2.7, 0.88, 2.6, 0.92, 2.8, 0.95],
+        noRepIndices: [2, 4, 6]
       },
       '3_sled_pull': {
         title: 'Station 3: 50m Sled Pull (雪橇拉)',
@@ -1296,7 +1301,8 @@ python hyrox/main.py --test-all
         repName: '后拉',
         validCount: 42,
         violationCount: 1,
-        durations: [1.1, 1.15, 1.12, 1.2, 1.18, 1.22, 1.25, 1.24]
+        durations: [1.1, 1.15, 1.12, 1.2, 1.18, 1.22, 2.7, 1.24],
+        noRepIndices: [6]
       },
       '4_burpees': {
         title: 'Station 4: 80m Burpee Broad Jumps (波比跳远)',
@@ -1312,7 +1318,8 @@ python hyrox/main.py --test-all
         repName: '波比跳',
         validCount: 18,
         violationCount: 2,
-        durations: [2.6, 2.7, 2.65, 3.8, 2.8, 2.85, 2.9, 3.1]
+        durations: [2.1, 2.2, 2.3, 3.8, 2.2, 2.4, 2.3, 3.1],
+        noRepIndices: [3, 7]
       },
       '5_rowing': {
         title: 'Station 5: 1000m Rowing (划船机)',
@@ -1328,7 +1335,8 @@ python hyrox/main.py --test-all
         repName: '冲程',
         validCount: 35,
         violationCount: 1,
-        durations: [1.9, 1.95, 1.92, 2.0, 2.05, 2.8, 2.08, 2.12]
+        durations: [1.9, 1.95, 1.92, 2.0, 2.05, 2.8, 2.08, 2.12],
+        noRepIndices: [5]
       },
       '6_farmers_carry': {
         title: 'Station 6: 200m Farmers Carry (农夫行走)',
@@ -1344,7 +1352,8 @@ python hyrox/main.py --test-all
         repName: '步态周期',
         validCount: 65,
         violationCount: 4,
-        durations: [0.55, 0.56, 0.58, 0.57, 0.59, 0.62, 0.95, 0.61]
+        durations: [0.55, 2.6, 0.58, 2.7, 0.59, 2.8, 0.61, 2.9],
+        noRepIndices: [1, 3, 5, 7]
       },
       '7_lunges': {
         title: 'Station 7: 100m Sandbag Lunges (沙袋箭步蹲)',
@@ -1360,7 +1369,8 @@ python hyrox/main.py --test-all
         repName: '弓步',
         validCount: 22,
         violationCount: 3,
-        durations: [1.8, 1.85, 1.9, 2.6, 1.92, 1.98, 2.05, 2.8]
+        durations: [1.8, 1.85, 2.7, 2.6, 1.92, 1.98, 2.05, 2.8],
+        noRepIndices: [2, 3, 7]
       },
       '8_wall_balls': {
         title: 'Station 8: 100 Wall Balls (药球掷高)',
@@ -1376,7 +1386,8 @@ python hyrox/main.py --test-all
         repName: '药球掷高',
         validCount: 14,
         violationCount: 1,
-        durations: [2.1, 2.2, 2.15, 2.3, 3.4, 2.25, 2.35, 2.4]
+        durations: [2.1, 2.2, 2.15, 2.3, 3.4, 2.25, 2.35, 2.4],
+        noRepIndices: [4]
       },
       'hyrox_run': {
         title: 'Running: 8 x 1km Running (高疲劳体能跑)',
@@ -1392,9 +1403,11 @@ python hyrox/main.py --test-all
         repName: '步频',
         validCount: 88,
         violationCount: 2,
-        durations: [0.34, 0.35, 0.34, 0.36, 0.35, 0.36, 0.42, 0.37]
+        durations: [0.34, 0.35, 2.6, 0.36, 0.35, 0.36, 2.8, 0.37],
+        noRepIndices: [2, 6]
       }
     };
+    window.STATIONS = STATIONS;
 
     let currentStationKey = '8_wall_balls';
     let isViolationMode = false;
@@ -1440,13 +1453,25 @@ python hyrox/main.py --test-all
       const data = STATIONS[currentStationKey];
       if (!data) return;
       waterfallBars.innerHTML = '';
+      const maxD = Math.max(...data.durations, 2.0);
       data.durations.forEach((d, i) => {
         const bar = document.createElement('div');
-        const isNoRep = d > 2.5 && (currentStationKey === '8_wall_balls' || currentStationKey === '4_burpees' || currentStationKey === '7_lunges' || currentStationKey === '1_skierg' || currentStationKey === '5_rowing');
+        const isNoRep = d > 2.5 && (
+          '1_skierg' === currentStationKey ||
+          '2_sled_push' === currentStationKey ||
+          '3_sled_pull' === currentStationKey ||
+          '4_burpees' === currentStationKey ||
+          '5_rowing' === currentStationKey ||
+          '6_farmers_carry' === currentStationKey ||
+          '7_lunges' === currentStationKey ||
+          '8_wall_balls' === currentStationKey ||
+          'hyrox_run' === currentStationKey
+        );
         bar.className = `rep-bar ${isNoRep ? 'norep' : 'valid'}`;
-        const heightPct = Math.min(100, Math.max(20, (d / 4.0) * 100));
+        const heightPct = Math.min(100, Math.max(22, (d / (maxD * 1.15)) * 100));
         bar.style.height = `${heightPct}%`;
         bar.innerHTML = `<span>${d}s</span>`;
+        bar.title = `${data.repName} #${i + 1}: ${d}s · ${isNoRep ? '违规 NO-REP' : '合规 REP'} · ${data.metricVal} (${data.unit})`;
         waterfallBars.appendChild(bar);
       });
     }
@@ -1466,6 +1491,11 @@ python hyrox/main.py --test-all
       statValidEl.innerText = data.validCount;
       statViolationEl.innerText = data.violationCount;
       statPassRateEl.innerText = `${rate}%`;
+
+      const repMetaEl = document.getElementById('statRepMetric');
+      if (repMetaEl) {
+        repMetaEl.innerText = `${data.repName} · 目标基准: ${data.metricVal} (${data.unit})`;
+      }
 
       document.querySelectorAll('.station-tab').forEach(tab => {
         tab.classList.toggle('active', tab.getAttribute('data-station') === key);
@@ -2095,11 +2125,33 @@ python hyrox/main.py --test-all
 
     // Code copy helper
     function copyCode(btn) {
-      const code = btn.nextElementSibling.innerText;
-      navigator.clipboard.writeText(code).then(() => {
+      const codeEl = btn.nextElementSibling;
+      const code = (codeEl.innerText || codeEl.textContent || '').trim();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          btn.innerText = '已复制!';
+          setTimeout(() => { btn.innerText = '复制命令'; }, 2000);
+        }).catch(() => fallbackCopy(btn, code));
+      } else {
+        fallbackCopy(btn, code);
+      }
+    }
+
+    function fallbackCopy(btn, text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
         btn.innerText = '已复制!';
-        setTimeout(() => { btn.innerText = '复制命令'; }, 2000);
-      });
+      } catch (e) {
+        btn.innerText = '已复制!';
+      }
+      document.body.removeChild(ta);
+      setTimeout(() => { btn.innerText = '复制命令'; }, 2000);
     }
 
     // Initialize safely

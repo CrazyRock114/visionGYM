@@ -138,14 +138,16 @@ def analyze_burpees(frames: list[dict], fps: float, n_frames: int, *,
                 if takeoff_frame > 2:
                     left_diff = abs(left_ankle_y[takeoff_frame] - left_ankle_y[takeoff_frame - 2])
                     right_diff = abs(right_ankle_y[takeoff_frame] - right_ankle_y[takeoff_frame - 2])
-                    if abs(left_diff - right_diff) > 0.06:
+                    sync_threshold = cfg.BURPEE_TAKEOFF_SYNC_TOLERANCE_S * 0.8
+                    if abs(left_diff - right_diff) > sync_threshold:
                         sync_passed = False
 
-                is_valid = chest_touch_passed and sync_passed
+                jump_dist_passed = jump_distance >= (cfg.BURPEE_MIN_JUMP_DIST_RATIO * 0.1)
+                is_valid = chest_touch_passed and sync_passed and jump_dist_passed
                 reason = ViolationType.NONE
                 if not chest_touch_passed:
                     reason = ViolationType.CHEST_NOT_TOUCHED
-                elif not sync_passed:
+                elif not sync_passed or not jump_dist_passed:
                     reason = ViolationType.STEP_TAKEOFF
 
                 rep = RepResult(

@@ -1070,13 +1070,19 @@ def analyze(frames: list[dict], fps: float, n_source_frames: int, *, cfg,
     # and is what makes the two comparable at all; PER_FOOT_GROUND = False
     # shares one line, right only if both ankles are the same distance away.
     if cfg.PER_FOOT_GROUND:
-        ground = {foot: float(np.percentile(ankle_y[foot][np.isfinite(ankle_y[foot])],
-                                            cfg.GROUND_PERCENTILE))
-                  for foot in FEET}
+        ground = {}
+        for foot in FEET:
+            finite_ankles = ankle_y[foot][np.isfinite(ankle_y[foot])]
+            if finite_ankles.size > 0:
+                ground[foot] = float(np.percentile(finite_ankles, cfg.GROUND_PERCENTILE))
+            else:
+                other_foot = "right" if foot == "left" else "left"
+                other_finite = ankle_y[other_foot][np.isfinite(ankle_y[other_foot])]
+                ground[foot] = float(np.percentile(other_finite, cfg.GROUND_PERCENTILE)) if other_finite.size > 0 else 0.0
     else:
         stacked = np.concatenate([ankle_y[foot][np.isfinite(ankle_y[foot])]
                                   for foot in FEET])
-        shared = float(np.percentile(stacked, cfg.GROUND_PERCENTILE))
+        shared = float(np.percentile(stacked, cfg.GROUND_PERCENTILE)) if stacked.size > 0 else 0.0
         ground = {foot: shared for foot in FEET}
 
     mid_hip = np.nanmean(np.vstack([hip_y[foot] for foot in FEET]), axis=0)

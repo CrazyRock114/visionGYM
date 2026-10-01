@@ -37,7 +37,7 @@ def render_hyrox_video(video_path: Path | None, frames: list[dict],
     target_h = cfg.EXPORT_HEIGHT or src_h
     # 保持原视频宽高比缩放
     video_w = int(src_w * (target_h / src_h))
-    panel_w = int(target_h * 0.68)  # 侧边面板宽度
+    panel_w = getattr(cfg, "SIDE_PANEL_WIDTH", 720) if getattr(cfg, "SIDE_PANEL_WIDTH", None) else int(target_h * cfg.SIDE_PANEL_SCALE)
     total_w = video_w + panel_w
     total_h = target_h
 
@@ -82,14 +82,19 @@ def render_hyrox_video(video_path: Path | None, frames: list[dict],
         highlight_color = None
         if current_rep:
             if not current_rep.is_valid:
-                highlight_color = (40, 40, 240)   # 红色高亮违规
+                highlight_color = cfg.NO_REP_COLOR   # 红色高亮违规
             else:
-                highlight_color = (80, 220, 80)   # 绿色高配合规
+                highlight_color = cfg.VALID_REP_COLOR   # 绿色高配合规
 
-        if persons and cfg.DRAW_SKELETON:
-            draw_skeleton(frame, persons[0], video_w, total_h,
-                          draw_face=cfg.DRAW_FACE, thickness=cfg.LINE_THICKNESS,
-                          radius=cfg.POINT_RADIUS, highlight_color=highlight_color)
+        if persons:
+            if cfg.DRAW_BBOX:
+                bbox_c = cfg.BBOX_COLOR
+            if cfg.DRAW_TRAIL and cfg.TRAIL_LENGTH > 0:
+                warn_c = cfg.WARN_COLOR
+            if cfg.DRAW_SKELETON:
+                draw_skeleton(frame, persons[0], video_w, total_h,
+                              draw_face=cfg.DRAW_FACE, thickness=cfg.LINE_THICKNESS,
+                              radius=cfg.POINT_RADIUS, highlight_color=highlight_color)
 
         # 3. 视频画面左上角 HUD
         cv2.rectangle(frame, (16, 16), (280, 68), (10, 12, 16), -1)

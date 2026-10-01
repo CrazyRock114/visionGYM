@@ -115,16 +115,20 @@ def analyze_lunges(frames: list[dict], fps: float, n_frames: int, *,
 
                 # 规则核查：
                 # 1. 后膝是否触地:
-                knee_touched = max_rear_ky >= 0.84  # 后膝触地深度判定 (y 达到 0.84 以上)
+                knee_touched = max_rear_ky >= (0.90 - cfg.LUNGE_REAR_KNEE_FLOOR_TOL)  # 后膝触地容差判定
 
                 # 2. 站立锁髋完全伸直:
                 lockout_passed = ((l_ang + r_ang) / 2.0 >= 155.0 and min(l_ang, r_ang) >= 148.0)
 
-                is_valid = knee_touched and lockout_passed
+                # 3. 前腿屈膝有效弓步:
+                front_angle = left_knee_ang[bottom_frame] if leading_leg == "left" else right_knee_ang[bottom_frame]
+                front_flex_passed = front_angle <= cfg.LUNGE_FRONT_KNEE_FLEXION + 20.0
+
+                is_valid = knee_touched and lockout_passed and front_flex_passed
                 reason = ViolationType.NONE
                 if not knee_touched:
                     reason = ViolationType.REAR_KNEE_NOT_TOUCHED
-                elif not lockout_passed:
+                elif not lockout_passed or not front_flex_passed:
                     reason = ViolationType.INCOMPLETE_EXTENSION
 
                 rep = RepResult(

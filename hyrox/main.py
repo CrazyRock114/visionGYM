@@ -63,6 +63,109 @@ def get_station_analyzer(station_id: str):
     return analyzers.get(station_id, analyze_wall_balls)
 
 
+def synthesize_mock_data(station_id: str, n_frames: int, fps: float):
+    """回退到生物力学运动学模拟器以生成姿态时序帧."""
+    return generate_mock_poses(station_id, n_frames=n_frames, fps=fps)
+
+
+def extract_vlmrun_video_poses(
+    video_path: Path,
+    station_id: str,
+    fps: float,
+    n_frames: int,
+    *,
+    cfg,
+) -> list[dict]:
+    """通过 VLMRun 云端网关调用 ViTPose 提取真实视频人体骨骼姿态."""
+    import base64
+    import hashlib
+    import os
+
+    # 1. 确保项目与缓存路径就绪
+    for d in (cfg.PROJECT_DIR, cfg.DATA_DIR, cfg.INPUT_DIR, cfg.CACHE_DIR):
+        d.mkdir(parents=True, exist_ok=True)
+
+    # 2. 视频特征哈希与缓存检索
+    cache_meta = {
+        "video": video_path.name,
+        "size": video_path.stat().st_size,
+        "model": cfg.MODEL,
+        "inference_height": cfg.INFERENCE_HEIGHT,
+        "video_fps": cfg.VIDEO_FPS,
+        "precision": cfg.PRECISION,
+        "convert_crf": cfg.CONVERT_CRF,
+        "output_crf": cfg.OUTPUT_CRF,
+    }
+    digest = hashlib.sha256(json.dumps(cache_meta, sort_keys=True).encode()).hexdigest()[:12]
+    cache_file = cfg.CACHE_DIR / f"poses_{digest}.json"
+
+    if cfg.REUSE_POSES and not cfg.FORCE_RECONVERT and cache_file.exists():
+        console.print(f"  [green]命中 VLMRun 姿态缓存:[/] {cache_file.name}")
+        try:
+            return json.loads(cache_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # 3. 检查 API Key 凭据
+    api_key = os.environ.get("VLMRUN_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        if cfg.MOCK_FALLBACK:
+            console.print("  [yellow]未检测到 VLMRUN_API_KEY，根据 MOCK_FALLBACK 配置自动回退到动力学对照基准...[/]")
+            return synthesize_mock_data(station_id, n_frames=n_frames, fps=fps)
+        raise RuntimeError("Missing VLMRUN_API_KEY for VLMRun inference.")
+
+    # 4. 执行云端 VLMRun / OpenAI API 请求
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            base_url=cfg.GATEWAY_BASE_URL,
+            api_key=api_key,
+            timeout=cfg.REQUEST_TIMEOUT,
+        )
+
+        video_bytes = video_path.read_bytes()
+        video_b64 = base64.b64encode(video_bytes).decode("ascii")
+
+        extra_body = {
+            "method": "pose",
+            "video_fps": fps if cfg.EVERY_FRAME else cfg.VIDEO_FPS,
+            "precision": cfg.PRECISION,
+            "height": cfg.INFERENCE_HEIGHT,
+        }
+
+        console.print(f"  正在请求 VLMRun 云端推理网关 ({cfg.MODEL})...")
+        response = client.chat.completions.create(
+            model=cfg.MODEL,
+            messages=[{
+                "role": "user",
+                "content": [{
+                    "type": "video_url",
+                    "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+                }],
+            }],
+            response_format={"type": "json_object"},
+            extra_body=extra_body,
+        )
+        payload = json.loads(response.choices[0].message.content)
+        content = payload.get("content", {})
+        frames = content.get("frames", [])
+
+        if not frames and cfg.MOCK_FALLBACK:
+            console.print("  [yellow]VLMRun 返回为空，启用对照数据...[/]")
+            return synthesize_mock_data(station_id, n_frames=n_frames, fps=fps)
+
+        if cfg.REUSE_POSES and frames:
+            cache_file.write_text(json.dumps(frames, ensure_ascii=False), encoding="utf-8")
+
+        return frames
+    except Exception as e:
+        console.print(f"  [yellow]VLMRun 网关连接异常 ({e})[/]")
+        if cfg.MOCK_FALLBACK:
+            console.print("  [cyan]根据 MOCK_FALLBACK 策略自动切换至动力学基准流...[/]")
+            return synthesize_mock_data(station_id, n_frames=n_frames, fps=fps)
+        raise
+
+
 def run_station(station_id: str, video_file: Path | None = None,
                 use_mock: bool = True) -> StationAnalysis:
     """运行单项站点的完整分析、视频渲染与报表输出流程."""
@@ -84,13 +187,27 @@ def run_station(station_id: str, video_file: Path | None = None,
     fps = 30.0
     n_frames = 210
 
+    if has_video:
+        import cv2
+        cap = cv2.VideoCapture(str(video_file))
+        if cap.isOpened():
+            detected_fps = cap.get(cv2.CAP_PROP_FPS)
+            if detected_fps and detected_fps > 0:
+                fps = round(detected_fps, 2)
+            detected_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if detected_frames and detected_frames > 0:
+                n_frames = min(detected_frames, 900)  # 上限保护 30 秒
+            cap.release()
+            console.print(f"  视频解析成功: [bold]{n_frames}[/] 帧 (@{fps} fps)")
+
     if has_video and not use_mock:
-        # 如配置了云端 API，可走网关；如未配置或本地模式则使用快速模拟
-        console.print("  [cyan]调用姿态检测引擎提取 COCO-17 骨架...[/]")
-        frames = generate_mock_poses(station_id, n_frames=n_frames, fps=fps)
+        console.print(f"  启动 VLMRun 云端姿态推理 (OpenAI client.chat.completions / 模型: [bold]{cfg.MODEL}[/])...")
+        frames = extract_vlmrun_video_poses(
+            video_file, station_id, fps=fps, n_frames=n_frames, cfg=cfg
+        )
     else:
         console.print(f"  已生成 [bold]{n_frames}[/] 帧连续生物力学动力学轨迹帧 (@{fps} fps)")
-        frames = generate_mock_poses(station_id, n_frames=n_frames, fps=fps)
+        frames = synthesize_mock_data(station_id, n_frames=n_frames, fps=fps)
 
     # 3. 运行 Hyrox 专项动作识别与裁判规则核查
     rule_step(3, "Hyrox 竞赛裁判与合规规则检测")
@@ -109,7 +226,10 @@ def run_station(station_id: str, video_file: Path | None = None,
     for r in analysis.reps:
         status_str = "[bold green]✓ 有效 (Valid)[/]" if r.is_valid \
             else f"[bold red]✗ 违规 ({r.reason})[/]"
-        metric_str = " · ".join(f"{k}: {v}" for k, v in r.metrics.items())
+        metric_str = " · ".join(
+            f"{k}: {v:.2f}" if isinstance(v, float) else f"{k}: {v}"
+            for k, v in r.metrics.items()
+        )
         table.add_row(
             str(r.number),
             status_str,

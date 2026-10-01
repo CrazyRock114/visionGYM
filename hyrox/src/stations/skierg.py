@@ -95,9 +95,11 @@ def analyze_skierg(frames: list[dict], fps: float, n_frames: int, *,
                 drive_time = (bottom_frame - start_frame) / fps
                 recovery_time = (end_frame - bottom_frame) / fps
 
-                # 规则核查：冲程幅度不能过于短浅
-                is_valid = amplitude >= cfg.SKIERG_MIN_AMPLITUDE
-                reason = ViolationType.NONE if is_valid else "警示: 冲程拉桨幅度不足"
+                # 规则核查：冲程幅度不能过于短浅，且需有屈髋下压发力角
+                hinge_ang = hip_angles[bottom_frame] if bottom_frame < len(hip_angles) else 120.0
+                hinge_ok = hinge_ang <= (cfg.SKIERG_POWER_HINGE_ANGLE + 35.0)
+                is_valid = (amplitude >= cfg.SKIERG_MIN_AMPLITUDE) and hinge_ok
+                reason = ViolationType.NONE if is_valid else "警示: 冲程拉桨幅度不足或屈髋不充分"
 
                 rep = RepResult(
                     number=rep_num,

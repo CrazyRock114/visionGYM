@@ -60,11 +60,12 @@ def analyze_sled(frames: list[dict], fps: float, n_frames: int, *,
     # 蹬步频率统计
     analysis.avg_cadence = 75.0 if is_push else 58.0
 
+    stall_detected = analysis.duration > (cfg.SLED_CADENCE_STALL_S * 10) and analysis.avg_cadence < 10.0
     analysis.extra_data = {
         "mean_driving_angle": f"{mean_angle:.1f}°",
         "optimal_range": f"{lo:.0f}° ~ {hi:.0f}°",
         "angle_status": "动力角极佳" if angle_optimal else ("前倾过低" if mean_angle < lo else "前倾不足"),
-        "cadence_status": "推进平稳高效",
+        "cadence_status": "推进卡顿预警" if stall_detected else "推进平稳高效",
     }
 
     analysis.reps = [
